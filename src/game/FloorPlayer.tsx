@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import {
   beatToTime,
   createFloorSession,
+  DEFAULT_MAPPING,
   finalize,
   generateChart,
   isComplete,
@@ -26,6 +27,13 @@ const CUE_HEX: Readonly<Record<CueColor, string>> = {
   red: '#ef4444',
   yellow: '#eab308',
 };
+
+const CUE_COLORS: readonly CueColor[] = ['blue', 'green', 'red', 'yellow'];
+
+/** True if the active mapping diverges from the default Xbox code (a mutated band). */
+function isMutatedMapping(mapping: ColorMapping): boolean {
+  return CUE_COLORS.some((c) => mapping[c] !== DEFAULT_MAPPING[c]);
+}
 
 const LEAD_SEC = 2.0;
 const PX_PER_SEC = 240;
@@ -210,17 +218,36 @@ function draw(
     ctx.globalAlpha = 1;
   }
 
-  // Mapping legend — landscape only (in portrait the tinted thumb buttons teach it).
+  // Mapping legend. Landscape: always shown bottom-left. Portrait: normally the
+  // tinted thumb buttons teach the (default) mapping, so we hide it — BUT when the
+  // mapping is MUTATED (an escalation band), mobile players need to see the new
+  // color->button table, so we draw a compact legend centered just ABOVE the hit
+  // line (clear of the thumb buttons below).
+  const colors: CueColor[] = ['blue', 'green', 'red', 'yellow'];
   if (!portrait) {
     ctx.font = '16px system-ui, sans-serif';
     ctx.textAlign = 'center';
-    const colors: CueColor[] = ['blue', 'green', 'red', 'yellow'];
     colors.forEach((c, i) => {
       const lx = 40 + i * 64;
       const ly = h - 48;
       ctx.fillStyle = CUE_HEX[c];
       ctx.beginPath();
       ctx.arc(lx, ly, 14, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#0b1020';
+      ctx.fillText(mapping[c], lx, ly + 5);
+    });
+  } else if (isMutatedMapping(mapping)) {
+    ctx.font = '15px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    const gap = 56;
+    const startX = w / 2 - (gap * (colors.length - 1)) / 2;
+    const ly = hitPos - 44; // just above the hit line, clear of the thumb buttons
+    colors.forEach((c, i) => {
+      const lx = startX + i * gap;
+      ctx.fillStyle = CUE_HEX[c];
+      ctx.beginPath();
+      ctx.arc(lx, ly, 13, 0, Math.PI * 2);
       ctx.fill();
       ctx.fillStyle = '#0b1020';
       ctx.fillText(mapping[c], lx, ly + 5);
