@@ -14,6 +14,9 @@ export default [
     plugins: { '@typescript-eslint': tseslint },
     rules: {
       ...tseslint.configs.recommended.rules,
+      // TypeScript already resolves identifiers; no-undef is redundant and flags
+      // browser/node globals that the typechecker handles correctly.
+      'no-undef': 'off',
       '@typescript-eslint/no-unused-vars': [
         'error',
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
