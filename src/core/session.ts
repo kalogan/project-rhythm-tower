@@ -69,10 +69,11 @@ function withVerdict(session: FloorSession, index: number, verdict: Verdict): Fl
   const verdicts = session.verdicts.slice();
   verdicts[index] = verdict;
   // Clearing partial progress on resolution keeps the parallel arrays immutable + tidy.
-  let partials = session.partials;
+  let partials: readonly (DoublePartial | null)[] = session.partials;
   if (partials[index] !== null) {
-    partials = partials.slice();
-    partials[index] = null;
+    const next = partials.slice();
+    next[index] = null;
+    partials = next;
   }
   const success = verdict === 'perfect' || verdict === 'good' || verdict === 'avoided';
   const combo = success ? session.combo + 1 : 0;
@@ -129,7 +130,7 @@ export function pressButton(session: FloorSession, button: Button, timeSec: numb
       // A wrong button fails the whole double immediately.
       return { session: withVerdict(session, best, 'wrong'), cueId: cue.id, verdict: 'wrong' };
     }
-    const prior = session.partials[best];
+    const prior = session.partials[best] ?? null;
     if (prior === null) {
       // First correct half — remember it, fire no verdict yet.
       return {
