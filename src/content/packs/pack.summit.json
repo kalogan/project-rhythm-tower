@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "id": "pack:summit",
+  "name": "Stormcrown Summit",
+  "bandOrder": 3,
+  "description": "The crown of the tower, climbed after the warm Atrium, the cold Spire, and the green Verdant Canopy — a windswept summit deck thrust above the cloud-line into a bruised, lightning-laced storm, where the only kind of climbing left is SPEED. This is the TEMPO band: the color->button code is the FAMILIAR Xbox default (blue=X, green=A, red=B, yellow=Y), kept unmutated and the cue vocabulary kept deliberately MODEST — plain taps, with only a LIGHT sprinkle of decoys on the very last floor — because the challenge here is not a new kind of read, it is the RATE of reads. Every floor cranks the BPM and tightens the cue spacing: ~132 on the approach, ~152, ~176, and a blistering ~200 at the crown, so the same taps you already know arrive faster and faster until your decode reflex is running flat-out. The core's minimum-spacing guard keeps consecutive cues from ever overlapping their hit windows even at the top speed, so the floor stays fair-but-fast rather than physically impossible. Hero landmark: the Stormcrown Beacon, a jagged ember-lit forge-spire of charcoal storm-stone whose cracked seams glow orange like cooling lava, crowned by a hovering violet stormlight that pulses with the gale — angular and TALL where the Atrium's lantern is a soft octa, the Spire's beacon a clean crystal, and the Verdant's pod a round seed-flower; this one is a riven, asymmetric crag. Palette + legibility plan: a near-black charcoal slate base (storm-stone and cloud-shadow) kept very dark so the molten ember-orange forge light reads as the brightest thing on the deck and the cool violet stormlight accent splits it cleanly (relative-luminance spread well past the 0.3 mush threshold — dark slate as silhouette, ember as fire, violet as the storm's glow). DISTINCT from ALL THREE siblings: the Atrium is fully WARM amber (golden lantern, golden sky); the Spire is COLD cobalt/violet stone with a CYAN beacon and a calm night-blue sky; the Verdant is GREEN-dominant moss/jade/lime; the Summit is CHARCOAL-and-EMBER — black storm-stone shot with molten orange and a violet stormlight against a bruised plum storm sky — so its mean-palette signature sits far from the warm-amber, cold-cobalt, and green signatures and the four never blend. It is the only band whose light is FIRE (ember) rather than gold, cyan, or lime, and the only one set in open storm rather than enclosed stone, spire, or glasshouse.",
+  "artKitId": "summit",
+  "escalationAxis": "tempo",
+  "look": {
+    "landmark": "The Stormcrown Beacon",
+    "palette": ["#181520", "#3e2a4a", "#ff7a30", "#0c0a12"],
+    "skyColor": "#4a2f55",
+    "fogColor": "#241a2e",
+    "accent": "#b06cff"
+  },
+  "floors": [
+    {
+      "id": "floor:summit-1",
+      "name": "Above the Cloud-Line",
+      "index": 0,
+      "seed": 4001,
+      "chart": {
+        "bpm": 132,
+        "beats": 32,
+        "colors": ["blue", "green", "red", "yellow"],
+        "density": 0.5,
+        "decoyChance": 0,
+        "doubleChance": 0,
+        "holdChance": 0
+      }
+    },
+    {
+      "id": "floor:summit-2",
+      "name": "Gathering Gale",
+      "index": 1,
+      "seed": 4002,
+      "chart": {
+        "bpm": 152,
+        "beats": 34,
+        "colors": ["blue", "green", "red", "yellow"],
+        "density": 0.55,
+        "decoyChance": 0,
+        "doubleChance": 0,
+        "holdChance": 0
+      }
+    },
+    {
+      "id": "floor:summit-3",
+      "name": "Riding the Lightning",
+      "index": 2,
+      "seed": 4003,
+      "chart": {
+        "bpm": 176,
+        "beats": 36,
+        "colors": ["blue", "green", "red", "yellow"],
+        "density": 0.62,
+        "decoyChance": 0,
+        "doubleChance": 0,
+        "holdChance": 0
+      }
+    },
+    {
+      "id": "floor:summit-crown",
+      "name": "Stormcrown",
+      "index": 3,
+      "seed": 4004,
+      "chart": {
+        "bpm": 200,
+        "beats": 40,
+        "colors": ["blue", "green", "red", "yellow"],
+        "density": 0.68,
+        "decoyChance": 0.1,
+        "doubleChance": 0,
+        "holdChance": 0
+      }
+    }
+  ],
+  "tags": ["escalation", "storm", "ember", "tempo", "summit", "crown"]
+}

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { makePrng } from './prng.js';
 import { DEFAULT_MAPPING, expectedButtons, type Cue, type ColorMapping } from './cue.js';
 import { makeBeatGrid, beatToTime, timeToBeat, secPerBeat } from './beatGrid.js';
-import { generateChart, type ChartSpec } from './chart.js';
+import { generateChart, MIN_CUE_GAP_SEC, MIN_CUE_GAP_FLOOR_SEC, type ChartSpec } from './chart.js';
 import { DEFAULT_WINDOWS, timingVerdict } from './judgment.js';
 import { createFloorSession, pressButton, tick, finalize, isComplete } from './session.js';
 
@@ -275,5 +275,59 @@ describe('consecutive cues — switching is possible', () => {
     s = r1.session;
     expect(r1.cueId).toBe(1);
     expect(r1.verdict).toBe('perfect');
+  });
+});
+
+// The TEMPO band (Band 4) pushes BPM high enough that cues on every beat could
+// land closer than two hit-windows apart. generateChart enforces a minimum gap
+// between consecutively PLACED cues so windows never overlap — while leaving all
+// low-tempo charts (and their golden fixtures) byte-identical (the guard only
+// trips when a beat is shorter than MIN_CUE_GAP_SEC, i.e. above ~200 BPM).
+describe('chart spacing guard (tempo band)', () => {
+  it('keeps the minimum gap above two good-windows (windows never overlap)', () => {
+    expect(MIN_CUE_GAP_SEC).toBeGreaterThan(MIN_CUE_GAP_FLOOR_SEC);
+    expect(MIN_CUE_GAP_FLOOR_SEC).toBeCloseTo(2 * DEFAULT_WINDOWS.goodSec);
+  });
+
+  it('leaves a LOW-tempo chart unchanged (guard never trips at >= 0.5s beats)', () => {
+    // At 120 BPM (0.5s/beat) every adjacent pair is 0.5s apart, well above the
+    // 0.3s gap — so the guarded generator matches the pre-guard expectation: a
+    // cue on every beat that the density roll selects, with contiguous ids.
+    const lowSpec: ChartSpec = { ...BAND1_SPEC, bpm: 120, density: 1.0, leadInBeats: 0 };
+    const chart = generateChart(lowSpec, 808);
+    // density 1.0 => every beat carries a cue (none skipped by spacing).
+    expect(chart.cues.length).toBe(lowSpec.beats);
+    chart.cues.forEach((cue, i) => {
+      expect(cue.id).toBe(i);
+      expect(cue.beat).toBe(i);
+    });
+  });
+
+  it('at HIGH tempo no two consecutive placed cues are closer than MIN_CUE_GAP_SEC', () => {
+    // 200 BPM => 0.30s/beat; at density 1.0 the naive chart would place a cue every
+    // 0.30s, which is below the gap — the guard must drop the colliding cues.
+    const fastSpec: ChartSpec = {
+      ...BAND1_SPEC,
+      bpm: 200,
+      beats: 40,
+      density: 1.0,
+      leadInBeats: 0,
+    };
+    const chart = generateChart(fastSpec, 909);
+    const secPerBeat = 60 / fastSpec.bpm;
+    expect(chart.cues.length).toBeGreaterThan(0);
+    for (let i = 1; i < chart.cues.length; i++) {
+      const gap = (chart.cues[i]!.beat - chart.cues[i - 1]!.beat) * secPerBeat;
+      expect(gap).toBeGreaterThanOrEqual(MIN_CUE_GAP_SEC - 1e-9);
+    }
+    // It still places SOME cues (it thins, it doesn't empty the floor).
+    expect(chart.cues.length).toBeGreaterThan(5);
+    // ids stay contiguous even though beats are skipped.
+    chart.cues.forEach((cue, i) => expect(cue.id).toBe(i));
+  });
+
+  it('is still deterministic at high tempo (same spec + seed => same chart)', () => {
+    const fastSpec: ChartSpec = { ...BAND1_SPEC, bpm: 200, density: 0.9, leadInBeats: 0 };
+    expect(generateChart(fastSpec, 55)).toEqual(generateChart(fastSpec, 55));
   });
 });

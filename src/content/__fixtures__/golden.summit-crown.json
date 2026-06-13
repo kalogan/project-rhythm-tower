@@ -1,0 +1,104 @@
+{
+  "schemaVersion": 1,
+  "floorId": "floor:summit-crown",
+  "seed": 4004,
+  "cueCount": 16,
+  "cues": [
+    {
+      "id": 0,
+      "beat": 5,
+      "color": "blue",
+      "kind": "decoy"
+    },
+    {
+      "id": 1,
+      "beat": 8,
+      "color": "blue",
+      "kind": "tap"
+    },
+    {
+      "id": 2,
+      "beat": 10,
+      "color": "green",
+      "kind": "tap"
+    },
+    {
+      "id": 3,
+      "beat": 12,
+      "color": "green",
+      "kind": "tap"
+    },
+    {
+      "id": 4,
+      "beat": 15,
+      "color": "yellow",
+      "kind": "tap"
+    },
+    {
+      "id": 5,
+      "beat": 17,
+      "color": "green",
+      "kind": "tap"
+    },
+    {
+      "id": 6,
+      "beat": 23,
+      "color": "red",
+      "kind": "tap"
+    },
+    {
+      "id": 7,
+      "beat": 25,
+      "color": "green",
+      "kind": "tap"
+    },
+    {
+      "id": 8,
+      "beat": 27,
+      "color": "blue",
+      "kind": "tap"
+    },
+    {
+      "id": 9,
+      "beat": 28,
+      "color": "yellow",
+      "kind": "tap"
+    },
+    {
+      "id": 10,
+      "beat": 30,
+      "color": "green",
+      "kind": "tap"
+    },
+    {
+      "id": 11,
+      "beat": 32,
+      "color": "red",
+      "kind": "tap"
+    },
+    {
+      "id": 12,
+      "beat": 33,
+      "color": "blue",
+      "kind": "tap"
+    },
+    {
+      "id": 13,
+      "beat": 35,
+      "color": "red",
+      "kind": "tap"
+    },
+    {
+      "id": 14,
+      "beat": 37,
+      "color": "red",
+      "kind": "tap"
+    },
+    {
+      "id": 15,
+      "beat": 38,
+      "color": "green",
+      "kind": "tap"
+    }
+  ]
+}
