@@ -160,6 +160,71 @@ describe('floor session (authoritative judgment)', () => {
   });
 });
 
+// DOUBLE cues are the Band 3 escalation: two colors flash and BOTH mapped buttons
+// must land in-window. One half alone is a miss; a wrong button fails the whole cue.
+describe('double cues — both buttons required', () => {
+  const grid = makeBeatGrid(100, 4, 0);
+  // blue+green -> X and A under the default mapping.
+  const doubleChart = { cues: [{ id: 0, beat: 8, color: 'blue', kind: 'double', color2: 'green' } as Cue] };
+
+  it('resolves PERFECT when both buttons land on the beat', () => {
+    let session = createFloorSession(doubleChart, grid);
+    const t = beatToTime(grid, 8);
+    const r1 = pressButton(session, 'X', t);
+    // First half: no verdict yet (nothing shatters), but the cue id is reported.
+    expect(r1.verdict).toBeNull();
+    expect(r1.cueId).toBe(0);
+    session = r1.session;
+    const r2 = pressButton(session, 'A', t);
+    expect(r2.verdict).toBe('perfect');
+    expect(r2.cueId).toBe(0);
+    session = r2.session;
+    expect(isComplete(session)).toBe(true);
+    expect(finalize(session).perfect).toBe(1);
+  });
+
+  it('grades from the WORSE of the two timing errors (one good half = good)', () => {
+    let session = createFloorSession(doubleChart, grid);
+    const t = beatToTime(grid, 8);
+    session = pressButton(session, 'X', t).session; // perfect-timed half
+    const r2 = pressButton(session, 'A', t + 0.1); // good-window half (>perfect, <good)
+    expect(r2.verdict).toBe('good');
+  });
+
+  it('MISSES when only one button is pressed before the window closes', () => {
+    let session = createFloorSession(doubleChart, grid);
+    const t = beatToTime(grid, 8);
+    const r1 = pressButton(session, 'X', t);
+    expect(r1.verdict).toBeNull();
+    session = r1.session;
+    session = tick(session, t + 1); // window long closed
+    expect(isComplete(session)).toBe(true);
+    expect(finalize(session).miss).toBe(1);
+    expect(finalize(session).perfect).toBe(0);
+  });
+
+  it('a WRONG button on a double fails the whole cue', () => {
+    const session = createFloorSession(doubleChart, grid);
+    const r = pressButton(session, 'B', beatToTime(grid, 8)); // B is neither X nor A
+    expect(r.verdict).toBe('wrong');
+    expect(r.cueId).toBe(0);
+    expect(isComplete(r.session)).toBe(true);
+  });
+
+  it('needs two DISTINCT presses — repeating the same correct button does not complete it', () => {
+    let session = createFloorSession(doubleChart, grid);
+    const t = beatToTime(grid, 8);
+    session = pressButton(session, 'X', t).session;
+    const again = pressButton(session, 'X', t); // same correct half again
+    expect(again.verdict).toBeNull();
+    session = again.session;
+    expect(isComplete(session)).toBe(false); // still waiting on A
+    // The window then closes with only one distinct half -> miss.
+    session = tick(session, t + 1);
+    expect(finalize(session).miss).toBe(1);
+  });
+});
+
 // Sanity-check that rapidly SWITCHING between consecutive cues that need DIFFERENT
 // buttons is actually achievable: the per-press matching must not let one press steal
 // a neighbouring cue, and the hit windows of adjacent cues must not overlap.
