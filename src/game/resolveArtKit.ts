@@ -2,6 +2,7 @@ import type { Object3D } from 'three';
 import type { BandLook } from '../content/schemas.js';
 import { atriumLantern, atriumPillar } from './atriumProps.js';
 import { spireObelisk, spireShard } from './spireProps.js';
+import { verdantPod, verdantPlanter } from './verdantProps.js';
 
 /**
  * THE ROUTING SEAM. A band references an `artKitId`; the renderer resolves it to a
@@ -17,6 +18,7 @@ export interface ArtKit {
 
 const ATRIUM_KIT: ArtKit = { landmark: atriumLantern, pillar: atriumPillar };
 const SPIRE_KIT: ArtKit = { landmark: spireObelisk, pillar: spireShard };
+const VERDANT_KIT: ArtKit = { landmark: verdantPod, pillar: verdantPlanter };
 
 export function resolveArtKit(artKitId: string): ArtKit {
   switch (artKitId) {
@@ -24,6 +26,8 @@ export function resolveArtKit(artKitId: string): ArtKit {
       return ATRIUM_KIT;
     case 'spire':
       return SPIRE_KIT;
+    case 'verdant':
+      return VERDANT_KIT;
     default:
       // Unknown kit: fall back to the atrium kit so the tower always renders.
       return ATRIUM_KIT;
