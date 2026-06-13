@@ -3,7 +3,7 @@ import tseslint from '@typescript-eslint/eslint-plugin';
 import tsparser from '@typescript-eslint/parser';
 
 export default [
-  { ignores: ['dist', 'node_modules', '*.cjs'] },
+  { ignores: ['**/dist/**', '**/node_modules/**', '.claude/**', '**/*.cjs'] },
   js.configs.recommended,
   {
     files: ['**/*.{ts,tsx}'],
