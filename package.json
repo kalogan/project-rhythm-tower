@@ -1,0 +1,47 @@
+{
+  "name": "project-rhythm-tower",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A cozy 2.5D rhythm tower-climber: decode colored cues into buttons on the beat to ascend.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -p tsconfig.json --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint .",
+    "arch": "depcruise src --config .dependency-cruiser.cjs",
+    "lint:content": "tsx src/lint/content.ts",
+    "lint:biome": "tsx src/lint/biome.ts",
+    "test": "vitest run",
+    "test:golden": "vitest run --dir src/content",
+    "gate": "pnpm typecheck && pnpm lint && pnpm arch && pnpm lint:content && pnpm lint:biome && pnpm test && pnpm build"
+  },
+  "dependencies": {
+    "@react-three/fiber": "^8.17.10",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "three": "^0.169.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.14.0",
+    "@types/node": "^22.9.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@types/three": "^0.169.0",
+    "@typescript-eslint/eslint-plugin": "^8.13.0",
+    "@typescript-eslint/parser": "^8.13.0",
+    "@vitejs/plugin-react": "^4.3.3",
+    "dependency-cruiser": "^16.5.0",
+    "eslint": "^9.14.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.10",
+    "vitest": "^2.1.4"
+  },
+  "packageManager": "pnpm@10.33.0",
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild"]
+  }
+}
