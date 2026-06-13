@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "id": "pack:belfry",
+  "name": "The Moonlit Belfry",
+  "bandOrder": 4,
+  "description": "The capstone band, reached after the warm Atrium, the cold Spire, the green Verdant Canopy, and the storm-violet Summit — a hushed, silvered bell-tower hung in still moonlight far above the gale, where the climb finally asks you to SUSTAIN rather than merely strike. This is the new-CUE-KINDS band, and its signature read is the HOLD: a cue whose head you press on the beat and then KEEP held, letting its tone ring out across its tail until the release point opens — let go too early and the chime breaks (a miss), hold it through and it rings true. The color->button code stays the FAMILIAR Xbox default (blue=X, green=A, red=B, yellow=Y), unmutated, because the new skill here is the duration of the press, not a re-decode. Tempo is kept MODEST and unhurried (~104 on the approach, ~110, ~116, ~120 at the crown) so the holds are comfortable to sustain — this is a calm, ringing finale, not a sprint. Holds escalate floor by floor: a gentle introduction at holdChance 0.18 among plain taps, then 0.22, then 0.25 with a light sprinkle of decoys, and a crown that braids holds with taps, the odd decoy, and a single double for one last all-vocabulary flourish. Hero landmark: the Great Moon-Bell, a vast silvered bronze bell slung in a faceted moonstone belfry-frame, its lip catching a pale warm chime-glow while the cold moonlit silver of the stone reads almost white against the night — broad and ROUND-shouldered and hanging, where the Atrium's lantern is a small soft octa, the Spire's beacon a sharp crystal needle, the Verdant's pod a round seed-flower, and the Summit's beacon a riven leaning crag; this one is a heavy suspended bell under an arched yoke, a silhouette none of the others share. Palette + legibility plan: a near-black midnight slate base kept very dark, a cool steel-blue mid for the belfry stone, and a luminous moonlit silver-ice as the brightest surface (so the silver reads as moonlight on stone), split cleanly by a single WARM bell-bronze chime accent that is the only warm light in the band (relative-luminance spread far past the 0.3 mush threshold — black night, steel stone, moon-silver, bronze chime). DISTINCT from ALL FOUR siblings: the Atrium is fully WARM amber (golden lantern, golden sky); the Spire is COLD cobalt/indigo stone with a CYAN beacon; the Verdant is GREEN-dominant moss/jade/lime; the Summit is CHARCOAL-and-EMBER orange under a bruised plum storm. The Belfry alone is a high-luminance MOONLIT SILVER — a cool neutral near-white stone, not a saturated hue — lit by a single warm BRONZE chime rather than gold, cyan, lime, or ember, so its mean-palette signature sits far from every warm-amber, cold-cobalt, green, and storm-violet sibling and the five never blend. It is the only band whose dominant surface is bright moon-silver and the only one set in still, windless moonlight rather than enclosed stone, open spire, glasshouse, or storm.",
+  "artKitId": "belfry",
+  "escalationAxis": "cue-kinds",
+  "look": {
+    "landmark": "The Great Moon-Bell",
+    "palette": ["#1a2230", "#5a7a96", "#cfe6f5", "#0d141d"],
+    "skyColor": "#324a64",
+    "fogColor": "#1c2c3e",
+    "accent": "#e9c98a"
+  },
+  "floors": [
+    {
+      "id": "floor:belfry-1",
+      "name": "First Toll",
+      "index": 0,
+      "seed": 5011,
+      "chart": {
+        "bpm": 104,
+        "beats": 32,
+        "colors": ["blue", "green", "red", "yellow"],
+        "density": 0.55,
+        "decoyChance": 0,
+        "doubleChance": 0,
+        "holdChance": 0.18
+      }
+    },
+    {
+      "id": "floor:belfry-2",
+      "name": "Ringing the Changes",
+      "index": 1,
+      "seed": 5002,
+      "chart": {
+        "bpm": 110,
+        "beats": 34,
+        "colors": ["blue", "green", "red", "yellow"],
+        "density": 0.55,
+        "decoyChance": 0,
+        "doubleChance": 0,
+        "holdChance": 0.22
+      }
+    },
+    {
+      "id": "floor:belfry-3",
+      "name": "Sustained Peal",
+      "index": 2,
+      "seed": 5003,
+      "chart": {
+        "bpm": 116,
+        "beats": 36,
+        "colors": ["blue", "green", "red", "yellow"],
+        "density": 0.6,
+        "decoyChance": 0.08,
+        "doubleChance": 0,
+        "holdChance": 0.25
+      }
+    },
+    {
+      "id": "floor:belfry-crown",
+      "name": "The Last Resounding",
+      "index": 3,
+      "seed": 5004,
+      "chart": {
+        "bpm": 120,
+        "beats": 40,
+        "colors": ["blue", "green", "red", "yellow"],
+        "density": 0.62,
+        "decoyChance": 0.08,
+        "doubleChance": 0.06,
+        "holdChance": 0.25
+      }
+    }
+  ],
+  "tags": ["escalation", "cue-kinds", "hold", "moonlit", "belfry", "capstone", "crown"]
+}
