@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 1,
+  "floorId": "floor:spire-crown",
+  "seed": 2004,
+  "cueCount": 14,
+  "cues": [
+    {
+      "id": 0,
+      "beat": 4,
+      "color": "red",
+      "kind": "tap"
+    },
+    {
+      "id": 1,
+      "beat": 7,
+      "color": "red",
+      "kind": "tap"
+    },
+    {
+      "id": 2,
+      "beat": 9,
+      "color": "blue",
+      "kind": "tap"
+    },
+    {
+      "id": 3,
+      "beat": 12,
+      "color": "red",
+      "kind": "tap"
+    },
+    {
+      "id": 4,
+      "beat": 13,
+      "color": "green",
+      "kind": "tap"
+    },
+    {
+      "id": 5,
+      "beat": 16,
+      "color": "yellow",
+      "kind": "tap"
+    },
+    {
+      "id": 6,
+      "beat": 19,
+      "color": "green",
+      "kind": "tap"
+    },
+    {
+      "id": 7,
+      "beat": 20,
+      "color": "yellow",
+      "kind": "tap"
+    },
+    {
+      "id": 8,
+      "beat": 21,
+      "color": "red",
+      "kind": "tap"
+    },
+    {
+      "id": 9,
+      "beat": 24,
+      "color": "blue",
+      "kind": "tap"
+    },
+    {
+      "id": 10,
+      "beat": 26,
+      "color": "green",
+      "kind": "tap"
+    },
+    {
+      "id": 11,
+      "beat": 28,
+      "color": "green",
+      "kind": "tap"
+    },
+    {
+      "id": 12,
+      "beat": 30,
+      "color": "blue",
+      "kind": "tap"
+    },
+    {
+      "id": 13,
+      "beat": 31,
+      "color": "blue",
+      "kind": "tap"
+    }
+  ]
+}
