@@ -12,9 +12,10 @@ ESLint · dependency-cruiser · CI) and the **deterministic core** (`src/core`: 
 beat grid, color→button cues + mapping, deterministic chart generator, judgment, scoring,
 pure floor-session reducer). **Scaffolded (first vertical slice):** Zod content schemas +
 the `atrium` band pack + golden fixture, the content/biome lint CLIs, and a thin r3f
-backdrop + DOM cue/HUD app shell. **Not built yet — don't assume:** real procedural audio
-synthesis, full hold/double cue handling, more bands, atmosphere/bloom. **Don't rebuild the
-core.** See brief §4 for the live source of truth.
+backdrop + DOM cue/HUD app shell. Mobile/portrait play (responsive vertical falling lane +
+split two-per-side touch controls) and a Vercel deploy config have landed. **Not built yet —
+don't assume:** real procedural audio synthesis, full hold/double cue handling, more bands,
+atmosphere/bloom. **Don't rebuild the core.** See brief §4 for the live source of truth.
 
 **Shared-file footgun:** the files multiple builders tend to touch — the routing seam
 (`src/game/resolveArtKit.ts` once it exists), the content registries (`src/content/registries/*`),
@@ -60,6 +61,9 @@ drop = deleted tests).
 Node 22 · pnpm 10. `pnpm install` (esbuild is whitelisted under `pnpm.onlyBuiltDependencies`).
 `pnpm dev` serves on :5180, `pnpm preview` on :5181 — boot on alt ports, never disturb a
 running instance. Tests are Node-env Vitest with hard timeouts (gate can't wedge).
+**Deploy:** `vercel.json` configures a static Vite deploy (framework `vite`, `pnpm build` →
+`dist/`). Connect the repo in Vercel (or `vercel --prod`); the actual deploy is the
+director's call (safety boundary — needs the Vercel account/credentials).
 
 ## Working agreements (the director's standing preferences)
 - **Grill before building** anything with open design forks (brief is the spec).

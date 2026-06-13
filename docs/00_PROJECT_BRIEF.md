@@ -41,16 +41,19 @@ PRNG, injected clock, beat grid, color→button cue model + mapping, determinist
 generator, judgment windows, scoring, and a pure floor-session reducer — all unit
 tested. Content schemas (Zod), the first band pack (`atrium`), content/biome lints, and
 a thin r3f backdrop + DOM cue-layer app shell are scaffolded as the first vertical
-slice. NOT yet built: real procedural audio synthesis, full hold/double cue handling,
-gamepad polish, additional bands, atmosphere/bloom. Don't rebuild the core.
+slice. Mobile/portrait play (responsive vertical falling lane + split two-per-side
+touch controls) and a Vercel deploy config have landed. NOT yet built: real procedural
+audio synthesis, full hold/double cue handling, additional bands, atmosphere/bloom.
+Don't rebuild the core.
 
 ## 5. Scope — IN vs OUT (be ruthless)
-- **In (now):** the decode-cue rhythm loop; floors-as-checkpoints; keyboard + gamepad
-  input; one playable band (baseline tap cues) end-to-end; deterministic chart gen;
-  procedural Web Audio beat; the 2.5D r3f backdrop + DOM cue/HUD layer; the gate.
+- **In (now):** the decode-cue rhythm loop; floors-as-checkpoints; keyboard + gamepad +
+  **touch** input; **portrait/mobile play** (responsive vertical cue lane); one playable
+  band (baseline tap cues) end-to-end; deterministic chart gen; procedural Web Audio beat;
+  the 2.5D r3f backdrop + DOM cue/HUD layer; **Vercel static deploy** config; the gate.
 - **Out (later):** real licensed music; online play/leaderboards; account/persistence
-  backend; level editor; mobile/touch UI; story/narrative; monetization. (Touch and the
-  richer cue kinds are *later*, not *never*.)
+  backend; level editor; story/narrative; monetization. (The richer cue kinds are *later*,
+  not *never*.)
 
 ## 6. Tech spine (locked)
 Single-package browser app. **The deterministic core is the source of truth; audio and
