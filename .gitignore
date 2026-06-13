@@ -6,3 +6,6 @@ dist-ssr
 *.log
 .vite
 coverage
+
+# Harness-managed agent worktrees (transient; never commit)
+.claude/
