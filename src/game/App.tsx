@@ -8,15 +8,24 @@ import { createAudioDriver, type AudioDriver } from './audio/audioDriver.js';
 type Phase = 'menu' | 'playing' | 'result';
 
 export function App(): JSX.Element {
-  const band = BANDS[0]!; // ground band for the kickstart slice
+  // Track WHERE in the climb we are: which band (by climb order) + which floor.
+  // The tower is the ordered list of BANDS; clearing a band's last floor advances
+  // to the next band's first floor (cozy: we only ever advance on `cleared`).
+  const [bandIndex, setBandIndex] = useState(0);
   const [floorIndex, setFloorIndex] = useState(0);
   const [phase, setPhase] = useState<Phase>('menu');
   const [score, setScore] = useState<FloorScore | null>(null);
   const audioRef = useRef<AudioDriver | null>(null);
 
+  const band = BANDS[bandIndex]!;
   const floor = band.floors[floorIndex]!;
   const grid = makeBeatGrid(floor.chart.bpm, floor.chart.beatsPerBar);
   const mapping = floor.mapping ?? DEFAULT_MAPPING;
+
+  // Is there anywhere left to climb after this floor?
+  const isBandLastFloor = floorIndex >= band.floors.length - 1;
+  const isTowerTop = isBandLastFloor && bandIndex >= BANDS.length - 1;
+  const canAdvance = Boolean(score?.cleared) && !isTowerTop;
 
   const startFloor = useCallback(async () => {
     if (!audioRef.current) audioRef.current = createAudioDriver();
@@ -31,11 +40,18 @@ export function App(): JSX.Element {
   }, []);
 
   const advance = useCallback(() => {
-    if (score?.cleared && floorIndex < band.floors.length - 1) {
-      setFloorIndex((i) => i + 1);
+    // Only climb on a clear; otherwise this is a Retry (same floor).
+    if (score?.cleared && !isTowerTop) {
+      if (isBandLastFloor) {
+        // Cleared the band's crown — ascend to the next band's first floor.
+        setBandIndex((b) => b + 1);
+        setFloorIndex(0);
+      } else {
+        setFloorIndex((i) => i + 1);
+      }
     }
     void startFloor();
-  }, [score, floorIndex, band.floors.length, startFloor]);
+  }, [score, isBandLastFloor, isTowerTop, startFloor]);
 
   return (
     <div style={{ position: 'absolute', inset: 0 }}>
@@ -74,7 +90,7 @@ export function App(): JSX.Element {
             {score.perfect} perfect · {score.good} good · {score.wrong} wrong · {score.miss} miss
           </p>
           <Button onClick={advance}>
-            {score.cleared && floorIndex < band.floors.length - 1 ? 'Next Floor' : 'Retry'}
+            {canAdvance ? (isBandLastFloor ? 'Next Band' : 'Next Floor') : 'Retry'}
           </Button>
         </Overlay>
       )}
