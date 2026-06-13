@@ -14,12 +14,14 @@ pure floor-session reducer). **Scaffolded (first vertical slice):** Zod content 
 the content/biome lint CLIs, and a climbing-tower r3f backdrop + DOM cue/HUD app shell.
 Mobile/portrait play + a Vercel deploy config are in. A **procedural music bed** (percussion,
 bass, low-passed pad on a i–vi–iv–v progression, arpeggio, scale-tuned cue tones) plays per
-floor. **FOUR bands climb end-to-end:** Atrium (baseline) → Spire (mapping mutation) → Verdant
+floor. **FIVE bands climb end-to-end:** Atrium (baseline) → Spire (mapping mutation) → Verdant
 Canopy (decoys + doubles; doubles need BOTH buttons) → Stormcrown Summit (tempo ramp 132→200
-BPM, guarded by a minimum cue-spacing so windows never overlap). A swordfighter at the hit point
-swings per-button attacks + shatters cues, with flash/shake/slash juice. **Not built yet —
-don't assume:** HOLD cues (need input-release plumbing), atmosphere/bloom, real fighter art
-(placeholder atlas). **Don't rebuild the core.** See brief §4.
+BPM, guarded by a minimum cue-spacing so windows never overlap) → Moonlit Belfry (HOLD cues:
+press on the start beat, hold through, early-release breaks). A swordfighter at the hit point
+swings per-button attacks + shatters cues, with flash/shake/slash juice. The tower wall renders
+as InstancedMesh (1–2 draw calls). **Not built yet — don't assume:** atmosphere/bloom, real
+fighter art (placeholder atlas), touch-release for holds (keyboard/gamepad only). **Don't
+rebuild the core.** See brief §4.
 
 **Shared-file footgun:** the files multiple builders tend to touch — the routing seam
 (`src/game/resolveArtKit.ts` once it exists), the content registries (`src/content/registries/*`),
