@@ -1,0 +1,127 @@
+{
+  "schemaVersion": 1,
+  "floorId": "floor:verdant-crown",
+  "seed": 3004,
+  "cueCount": 19,
+  "cues": [
+    {
+      "id": 0,
+      "beat": 5,
+      "color": "blue",
+      "kind": "tap"
+    },
+    {
+      "id": 1,
+      "beat": 6,
+      "color": "yellow",
+      "kind": "tap"
+    },
+    {
+      "id": 2,
+      "beat": 7,
+      "color": "yellow",
+      "kind": "decoy"
+    },
+    {
+      "id": 3,
+      "beat": 8,
+      "color": "red",
+      "kind": "tap"
+    },
+    {
+      "id": 4,
+      "beat": 9,
+      "color": "blue",
+      "kind": "double",
+      "color2": "blue"
+    },
+    {
+      "id": 5,
+      "beat": 10,
+      "color": "red",
+      "kind": "tap"
+    },
+    {
+      "id": 6,
+      "beat": 12,
+      "color": "blue",
+      "kind": "tap"
+    },
+    {
+      "id": 7,
+      "beat": 13,
+      "color": "blue",
+      "kind": "decoy"
+    },
+    {
+      "id": 8,
+      "beat": 15,
+      "color": "blue",
+      "kind": "tap"
+    },
+    {
+      "id": 9,
+      "beat": 16,
+      "color": "blue",
+      "kind": "tap"
+    },
+    {
+      "id": 10,
+      "beat": 19,
+      "color": "yellow",
+      "kind": "double",
+      "color2": "blue"
+    },
+    {
+      "id": 11,
+      "beat": 20,
+      "color": "red",
+      "kind": "tap"
+    },
+    {
+      "id": 12,
+      "beat": 22,
+      "color": "red",
+      "kind": "tap"
+    },
+    {
+      "id": 13,
+      "beat": 23,
+      "color": "blue",
+      "kind": "decoy"
+    },
+    {
+      "id": 14,
+      "beat": 24,
+      "color": "blue",
+      "kind": "double",
+      "color2": "yellow"
+    },
+    {
+      "id": 15,
+      "beat": 27,
+      "color": "yellow",
+      "kind": "double",
+      "color2": "green"
+    },
+    {
+      "id": 16,
+      "beat": 28,
+      "color": "yellow",
+      "kind": "decoy"
+    },
+    {
+      "id": 17,
+      "beat": 29,
+      "color": "yellow",
+      "kind": "double",
+      "color2": "red"
+    },
+    {
+      "id": 18,
+      "beat": 30,
+      "color": "yellow",
+      "kind": "tap"
+    }
+  ]
+}

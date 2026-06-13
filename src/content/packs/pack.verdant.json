@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "id": "pack:verdant",
+  "name": "The Verdant Canopy",
+  "bandOrder": 2,
+  "description": "The third band of the tower, climbed after the warm Atrium and the cold Spire — a lush glasshouse canopy where the stone gives way to living things: tiered planters of moss, fern-fronds, and hanging vines lit through green glass, with one luminous pod-flower hanging over the path you orient by. This is the CUE-KINDS band: the color->button code is the FAMILIAR Xbox default (blue=X, green=A, red=B, yellow=Y), kept unmutated on purpose — the challenge here is a richer cue VOCABULARY, not a scrambled map. Two new cue kinds arrive. DECOYS are fake-out flashes you must NOT hit (a hit is a fault; the right read is to let it pass) — floor 0 teaches them alone with all four colours. DOUBLES flash TWO colours at once and demand BOTH their buttons inside the window — floor 1 teaches them clean, with no decoys to muddy the read. Floor 2 mixes both kinds so the player must triage fake-outs and twin-presses in the same chart, and the crown floor is a denser mix of all three reads (tap / avoid / press-both). Hero landmark: the Lumen Pod, a fat faceted seed-pod flower of pale-jade glass with a glowing lime stamen that blooms like a lantern of chlorophyll — round and organic where the Atrium's lantern is a hard octa and the Spire's beacon is an angular crystal. Palette + legibility plan: a deep forest-green base (near-black mossy stone and dark canopy shadow) kept dark so the pale-jade pod and the electric-lime accent POP off it (relative-luminance spread far past the 0.3 mush threshold — the dark moss reads as silhouette, the lime stamen as light). DISTINCT from BOTH siblings: the Atrium is fully WARM (amber stone, lantern-gold, golden sky) and the Spire is COLD blue (cobalt/violet stone, cyan beacon, night-blue sky); the Verdant is GREEN-dominant — mossy emerald stone, jade glass, lime light, against a soft green-glass sky — so its mean-palette signature sits far from the warm-amber and cold-cobalt signatures and the three never blend.",
+  "artKitId": "verdant",
+  "escalationAxis": "cue-kinds",
+  "look": {
+    "landmark": "The Lumen Pod",
+    "palette": ["#10241a", "#1f7a4d", "#7be08a", "#0c3b2e"],
+    "skyColor": "#2f6f4a",
+    "fogColor": "#163a2a",
+    "accent": "#d6ff5c"
+  },
+  "floors": [
+    {
+      "id": "floor:verdant-1",
+      "name": "False Blooms",
+      "index": 0,
+      "seed": 3001,
+      "chart": {
+        "bpm": 96,
+        "beats": 28,
+        "colors": ["blue", "green", "red", "yellow"],
+        "density": 0.45,
+        "decoyChance": 0.18,
+        "doubleChance": 0,
+        "holdChance": 0
+      }
+    },
+    {
+      "id": "floor:verdant-2",
+      "name": "Twin Petals",
+      "index": 1,
+      "seed": 3002,
+      "chart": {
+        "bpm": 104,
+        "beats": 30,
+        "colors": ["blue", "green", "red", "yellow"],
+        "density": 0.5,
+        "decoyChance": 0,
+        "doubleChance": 0.22,
+        "holdChance": 0
+      }
+    },
+    {
+      "id": "floor:verdant-3",
+      "name": "Tangled Vines",
+      "index": 2,
+      "seed": 3007,
+      "chart": {
+        "bpm": 110,
+        "beats": 32,
+        "colors": ["blue", "green", "red", "yellow"],
+        "density": 0.55,
+        "decoyChance": 0.15,
+        "doubleChance": 0.2,
+        "holdChance": 0
+      }
+    },
+    {
+      "id": "floor:verdant-crown",
+      "name": "Verdant Crown",
+      "index": 3,
+      "seed": 3004,
+      "chart": {
+        "bpm": 116,
+        "beats": 32,
+        "colors": ["blue", "green", "red", "yellow"],
+        "density": 0.6,
+        "decoyChance": 0.16,
+        "doubleChance": 0.22,
+        "holdChance": 0
+      }
+    }
+  ],
+  "tags": ["escalation", "green", "cue-kinds", "verdant"]
+}
