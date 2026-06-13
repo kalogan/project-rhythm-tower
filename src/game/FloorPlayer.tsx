@@ -41,6 +41,10 @@ const BUTTON_HEX: Readonly<Record<Button, string>> = {
 
 const CUE_COLORS: readonly CueColor[] = ['blue', 'green', 'red', 'yellow'];
 
+// Module-level so the decoy dashed ring allocates no array per frame (hot-path).
+const DECOY_DASH: readonly number[] = [4, 4];
+const EMPTY_DASH: readonly number[] = [];
+
 /** True if the active mapping diverges from the default Xbox code (a mutated band). */
 function isMutatedMapping(mapping: ColorMapping): boolean {
   return CUE_COLORS.some((c) => mapping[c] !== DEFAULT_MAPPING[c]);
@@ -275,14 +279,52 @@ function draw(
     if (verdict === 'perfect' || verdict === 'good') continue;
 
     ctx.globalAlpha = verdict ? 0.25 : 1;
-    ctx.fillStyle = CUE_HEX[cue.color];
-    ctx.beginPath();
-    ctx.arc(cx, cy, cue.kind === 'decoy' ? 18 : 26, 0, Math.PI * 2);
-    ctx.fill();
-    if (cue.kind === 'decoy') {
+    if (cue.kind === 'double') {
+      // DOUBLE: two colours on one cue (press BOTH buttons). Outer ring = color,
+      // inner disc = color2, so the player reads "two presses needed".
+      ctx.fillStyle = CUE_HEX[cue.color];
+      ctx.beginPath();
+      ctx.arc(cx, cy, 26, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = CUE_HEX[cue.color2 ?? cue.color];
+      ctx.beginPath();
+      ctx.arc(cx, cy, 14, 0, Math.PI * 2);
+      ctx.fill();
+      // A thin white seam separates the two colours so neither blends into the other.
+      ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 14, 0, Math.PI * 2);
+      ctx.stroke();
+    } else if (cue.kind === 'decoy') {
+      // DECOY: a fake-out you must NOT hit — drawn small + dimmed with a black "no"
+      // ring and a red X struck through it so the read is unmistakably "leave it".
+      ctx.globalAlpha = verdict ? 0.2 : 0.55;
+      ctx.fillStyle = CUE_HEX[cue.color];
+      ctx.beginPath();
+      ctx.arc(cx, cy, 17, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.setLineDash(DECOY_DASH);
       ctx.strokeStyle = '#000';
       ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 20, 0, Math.PI * 2);
       ctx.stroke();
+      ctx.setLineDash(EMPTY_DASH);
+      // The "no" cross-out.
+      ctx.strokeStyle = '#ef4444';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(cx - 11, cy - 11);
+      ctx.lineTo(cx + 11, cy + 11);
+      ctx.moveTo(cx + 11, cy - 11);
+      ctx.lineTo(cx - 11, cy + 11);
+      ctx.stroke();
+    } else {
+      ctx.fillStyle = CUE_HEX[cue.color];
+      ctx.beginPath();
+      ctx.arc(cx, cy, 26, 0, Math.PI * 2);
+      ctx.fill();
     }
     ctx.globalAlpha = 1;
   }
