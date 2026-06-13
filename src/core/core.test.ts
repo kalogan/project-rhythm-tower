@@ -4,7 +4,7 @@ import { DEFAULT_MAPPING, expectedButtons, type Cue, type ColorMapping } from '.
 import { makeBeatGrid, beatToTime, timeToBeat, secPerBeat } from './beatGrid.js';
 import { generateChart, MIN_CUE_GAP_SEC, MIN_CUE_GAP_FLOOR_SEC, type ChartSpec } from './chart.js';
 import { DEFAULT_WINDOWS, timingVerdict } from './judgment.js';
-import { createFloorSession, pressButton, tick, finalize, isComplete } from './session.js';
+import { createFloorSession, pressButton, releaseButton, tick, finalize, isComplete } from './session.js';
 
 const BAND1_SPEC: ChartSpec = {
   bpm: 100,
@@ -329,5 +329,112 @@ describe('chart spacing guard (tempo band)', () => {
   it('is still deterministic at high tempo (same spec + seed => same chart)', () => {
     const fastSpec: ChartSpec = { ...BAND1_SPEC, bpm: 200, density: 0.9, leadInBeats: 0 };
     expect(generateChart(fastSpec, 55)).toEqual(generateChart(fastSpec, 55));
+  });
+});
+
+// HOLD cues are the capstone (Band 5) escalation: press the correct button on the START
+// beat and KEEP it held until the cue's END time (start + holdBeats). Letting go early
+// breaks the hold (miss); a wrong button on the start fails it; never pressing misses.
+// Success grades by the START timing (holding longer doesn't grade better).
+describe('hold cues — press on the beat, hold through to the end', () => {
+  const grid = makeBeatGrid(100, 4, 0); // 0.6s / beat
+  // blue -> X under the default mapping; a 2-beat hold starting at beat 8.
+  const holdChart = {
+    cues: [{ id: 0, beat: 8, color: 'blue', kind: 'hold', holdBeats: 2 } as Cue],
+  };
+  const startT = beatToTime(grid, 8);
+  const endT = beatToTime(grid, 10); // start + 2 beats
+
+  it('PERFECT: start on the beat, hold through, resolve at the end time', () => {
+    let session = createFloorSession(holdChart, grid);
+    const r = pressButton(session, 'X', startT);
+    expect(r.verdict).toBeNull(); // nothing shatters yet
+    expect(r.cueId).toBe(0);
+    session = r.session;
+    // Mid-hold: a tick before the end must NOT prematurely miss the held cue.
+    session = tick(session, startT + 0.3);
+    expect(isComplete(session)).toBe(false);
+    // At the end time, holding through grants the verdict (graded by start timing).
+    session = tick(session, endT);
+    expect(isComplete(session)).toBe(true);
+    expect(finalize(session).perfect).toBe(1);
+  });
+
+  it('grades by the START timing (a good-window start = good even if held perfectly long)', () => {
+    let session = createFloorSession(holdChart, grid);
+    session = pressButton(session, 'X', startT + 0.1).session; // good window (>perfect, <good)
+    session = tick(session, endT + 0.5);
+    expect(finalize(session).good).toBe(1);
+    expect(finalize(session).perfect).toBe(0);
+  });
+
+  it('MISS: releasing the button before the end window breaks the hold early', () => {
+    let session = createFloorSession(holdChart, grid);
+    session = pressButton(session, 'X', startT).session;
+    // Let go well before the end -> early break -> miss, resolved immediately.
+    const r = releaseButton(session, 'X', startT + 0.3);
+    expect(r.verdict).toBe('miss');
+    expect(r.cueId).toBe(0);
+    session = r.session;
+    expect(isComplete(session)).toBe(true);
+    expect(finalize(session).miss).toBe(1);
+    expect(finalize(session).perfect).toBe(0);
+  });
+
+  it('SUCCESS still: releasing AT/AFTER the end window is fine (held long enough)', () => {
+    let session = createFloorSession(holdChart, grid);
+    session = pressButton(session, 'X', startT).session;
+    // Release right at the end time — already held through; release is ignored.
+    const r = releaseButton(session, 'X', endT);
+    expect(r.verdict).toBeNull();
+    session = r.session;
+    expect(isComplete(session)).toBe(false); // tick grants it
+    session = tick(session, endT);
+    expect(finalize(session).perfect).toBe(1);
+  });
+
+  it('WRONG: a wrong button on the start beat fails the hold outright', () => {
+    const session = createFloorSession(holdChart, grid);
+    const r = pressButton(session, 'A', startT); // A is not X
+    expect(r.verdict).toBe('wrong');
+    expect(r.cueId).toBe(0);
+    expect(isComplete(r.session)).toBe(true);
+  });
+
+  it('MISS: a hold never pressed misses once its start window closes', () => {
+    let session = createFloorSession(holdChart, grid);
+    session = tick(session, startT + 1); // start window long closed, never pressed
+    expect(isComplete(session)).toBe(true);
+    expect(finalize(session).miss).toBe(1);
+  });
+
+  it('releasing the WRONG button (or with no hold) is a harmless stray', () => {
+    let session = createFloorSession(holdChart, grid);
+    session = pressButton(session, 'X', startT).session;
+    // Release a different button — should not break the X hold.
+    const r = releaseButton(session, 'B', startT + 0.2);
+    expect(r.cueId).toBeNull();
+    expect(r.verdict).toBeNull();
+    session = r.session;
+    session = tick(session, endT);
+    expect(finalize(session).perfect).toBe(1);
+  });
+
+  it('a repeat press while already holding is a no-op (does not re-grade)', () => {
+    let session = createFloorSession(holdChart, grid);
+    session = pressButton(session, 'X', startT).session; // perfect start
+    const again = pressButton(session, 'X', startT + 0.12); // would be a good start
+    expect(again.verdict).toBeNull();
+    session = again.session;
+    session = tick(session, endT);
+    // Graded by the FIRST (perfect) start, not the repeat.
+    expect(finalize(session).perfect).toBe(1);
+  });
+
+  it('idle tick mid-hold returns the SAME reference (no allocation)', () => {
+    let session = createFloorSession(holdChart, grid);
+    session = pressButton(session, 'X', startT).session;
+    const same = tick(session, startT + 0.3); // mid-hold, nothing to resolve
+    expect(same).toBe(session);
   });
 });

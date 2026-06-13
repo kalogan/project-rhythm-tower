@@ -7,6 +7,7 @@ import golden from './__fixtures__/golden.atrium-crown.json' with { type: 'json'
 import goldenSpire from './__fixtures__/golden.spire-crown.json' with { type: 'json' };
 import goldenVerdant from './__fixtures__/golden.verdant-crown.json' with { type: 'json' };
 import goldenSummit from './__fixtures__/golden.summit-crown.json' with { type: 'json' };
+import goldenBelfry from './__fixtures__/golden.belfry-crown.json' with { type: 'json' };
 
 describe('content packs', () => {
   it('loads and validates every band', () => {
@@ -65,6 +66,68 @@ describe('golden fixture (determinism pin)', () => {
     const chart = generateChart(toChartSpec(floor), floor.seed);
     expect(chart.cues.length).toBe(goldenSummit.cueCount);
     expect(chart.cues).toEqual(goldenSummit.cues);
+  });
+
+  it('regenerates the belfry-crown chart byte-identically (holds carry holdBeats)', () => {
+    const band = BANDS.find((b) => b.id === 'pack:belfry')!;
+    const floor = band.floors.find((f) => f.id === goldenBelfry.floorId)!;
+    const chart = generateChart(toChartSpec(floor), floor.seed);
+    expect(chart.cues.length).toBe(goldenBelfry.cueCount);
+    expect(chart.cues).toEqual(goldenBelfry.cues);
+  });
+});
+
+describe('band 5 — The Moonlit Belfry (HOLD cue-kinds escalation)', () => {
+  const belfry = BANDS.find((b) => b.id === 'pack:belfry');
+
+  it('loads pack:belfry as the fifth band (bandOrder 4, axis "cue-kinds")', () => {
+    expect(belfry).toBeDefined();
+    expect(belfry!.bandOrder).toBe(4);
+    expect(bandByOrder(4)?.id).toBe('pack:belfry');
+    expect(belfry!.escalationAxis).toBe('cue-kinds');
+  });
+
+  it('keeps the DEFAULT mapping (no per-floor override — the new skill is sustain, not re-decode)', () => {
+    for (const floor of belfry!.floors) {
+      expect(floor.mapping).toBeUndefined();
+    }
+  });
+
+  it('declares a positive, RISING holdChance across the four floors', () => {
+    const holds = belfry!.floors.map((f) => f.chart.holdChance ?? 0);
+    expect(holds.length).toBe(4);
+    for (const h of holds) expect(h).toBeGreaterThan(0);
+    // Non-decreasing, and strictly rising overall (intro -> crown).
+    for (let i = 1; i < holds.length; i++) expect(holds[i]!).toBeGreaterThanOrEqual(holds[i - 1]!);
+    expect(holds[holds.length - 1]!).toBeGreaterThan(holds[0]!);
+  });
+
+  it('keeps the tempo modest so holds are comfortable to sustain (104-120 BPM)', () => {
+    for (const floor of belfry!.floors) {
+      expect(floor.chart.bpm).toBeGreaterThanOrEqual(100);
+      expect(floor.chart.bpm).toBeLessThanOrEqual(120);
+    }
+  });
+
+  it('places at least one HOLD on EVERY floor (and every hold carries holdBeats >= 1)', () => {
+    for (const floor of belfry!.floors) {
+      const chart = generateChart(toChartSpec(floor), floor.seed);
+      const holds = chart.cues.filter((c) => c.kind === 'hold');
+      expect(holds.length).toBeGreaterThan(0);
+      for (const h of holds) {
+        expect(h.holdBeats).toBeDefined();
+        expect(h.holdBeats!).toBeGreaterThanOrEqual(1);
+      }
+    }
+  });
+
+  it('the crown braids the full vocabulary — holds, taps, decoys, and a double', () => {
+    const crown = belfry!.floors.find((f) => f.id === 'floor:belfry-crown')!;
+    const chart = generateChart(toChartSpec(crown), crown.seed);
+    expect(chart.cues.some((c) => c.kind === 'hold')).toBe(true);
+    expect(chart.cues.some((c) => c.kind === 'tap')).toBe(true);
+    expect(chart.cues.some((c) => c.kind === 'decoy')).toBe(true);
+    expect(chart.cues.some((c) => c.kind === 'double')).toBe(true);
   });
 });
 

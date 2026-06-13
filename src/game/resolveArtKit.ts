@@ -4,6 +4,7 @@ import { atriumLantern, atriumPillar } from './atriumProps.js';
 import { spireObelisk, spireShard } from './spireProps.js';
 import { verdantPod, verdantPlanter } from './verdantProps.js';
 import { summitBeacon, summitMonolith } from './summitProps.js';
+import { belfryBell, belfryChime } from './belfryProps.js';
 
 /**
  * THE ROUTING SEAM. A band references an `artKitId`; the renderer resolves it to a
@@ -21,6 +22,7 @@ const ATRIUM_KIT: ArtKit = { landmark: atriumLantern, pillar: atriumPillar };
 const SPIRE_KIT: ArtKit = { landmark: spireObelisk, pillar: spireShard };
 const VERDANT_KIT: ArtKit = { landmark: verdantPod, pillar: verdantPlanter };
 const SUMMIT_KIT: ArtKit = { landmark: summitBeacon, pillar: summitMonolith };
+const BELFRY_KIT: ArtKit = { landmark: belfryBell, pillar: belfryChime };
 
 export function resolveArtKit(artKitId: string): ArtKit {
   switch (artKitId) {
@@ -32,6 +34,8 @@ export function resolveArtKit(artKitId: string): ArtKit {
       return VERDANT_KIT;
     case 'summit':
       return SUMMIT_KIT;
+    case 'belfry':
+      return BELFRY_KIT;
     default:
       // Unknown kit: fall back to the atrium kit so the tower always renders.
       return ATRIUM_KIT;

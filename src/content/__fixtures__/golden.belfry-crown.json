@@ -1,0 +1,160 @@
+{
+  "schemaVersion": 1,
+  "floorId": "floor:belfry-crown",
+  "seed": 5004,
+  "cueCount": 24,
+  "cues": [
+    {
+      "id": 0,
+      "beat": 4,
+      "color": "red",
+      "kind": "decoy"
+    },
+    {
+      "id": 1,
+      "beat": 5,
+      "color": "red",
+      "kind": "tap"
+    },
+    {
+      "id": 2,
+      "beat": 6,
+      "color": "blue",
+      "kind": "tap"
+    },
+    {
+      "id": 3,
+      "beat": 8,
+      "color": "blue",
+      "kind": "tap"
+    },
+    {
+      "id": 4,
+      "beat": 10,
+      "color": "red",
+      "kind": "hold",
+      "holdBeats": 1
+    },
+    {
+      "id": 5,
+      "beat": 11,
+      "color": "red",
+      "kind": "hold",
+      "holdBeats": 1
+    },
+    {
+      "id": 6,
+      "beat": 13,
+      "color": "green",
+      "kind": "hold",
+      "holdBeats": 1
+    },
+    {
+      "id": 7,
+      "beat": 15,
+      "color": "green",
+      "kind": "tap"
+    },
+    {
+      "id": 8,
+      "beat": 18,
+      "color": "green",
+      "kind": "hold",
+      "holdBeats": 1
+    },
+    {
+      "id": 9,
+      "beat": 22,
+      "color": "red",
+      "kind": "tap"
+    },
+    {
+      "id": 10,
+      "beat": 23,
+      "color": "blue",
+      "kind": "tap"
+    },
+    {
+      "id": 11,
+      "beat": 24,
+      "color": "blue",
+      "kind": "decoy"
+    },
+    {
+      "id": 12,
+      "beat": 25,
+      "color": "yellow",
+      "kind": "double",
+      "color2": "green"
+    },
+    {
+      "id": 13,
+      "beat": 27,
+      "color": "red",
+      "kind": "tap"
+    },
+    {
+      "id": 14,
+      "beat": 28,
+      "color": "yellow",
+      "kind": "tap"
+    },
+    {
+      "id": 15,
+      "beat": 29,
+      "color": "yellow",
+      "kind": "tap"
+    },
+    {
+      "id": 16,
+      "beat": 31,
+      "color": "green",
+      "kind": "hold",
+      "holdBeats": 1
+    },
+    {
+      "id": 17,
+      "beat": 32,
+      "color": "blue",
+      "kind": "decoy"
+    },
+    {
+      "id": 18,
+      "beat": 33,
+      "color": "yellow",
+      "kind": "tap"
+    },
+    {
+      "id": 19,
+      "beat": 35,
+      "color": "yellow",
+      "kind": "hold",
+      "holdBeats": 1
+    },
+    {
+      "id": 20,
+      "beat": 36,
+      "color": "red",
+      "kind": "tap"
+    },
+    {
+      "id": 21,
+      "beat": 37,
+      "color": "yellow",
+      "kind": "tap"
+    },
+    {
+      "id": 22,
+      "beat": 38,
+      "color": "green",
+      "kind": "tap"
+    },
+    {
+      "id": 23,
+      "beat": 39,
+      "color": "blue",
+      "kind": "hold",
+      "holdBeats": 1
+    }
+  ]
+}
