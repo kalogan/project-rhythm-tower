@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "id": "pack:spire",
+  "name": "The Spire",
+  "bandOrder": 1,
+  "description": "The first escalation band above the warm Atrium — a tall, cool spire of cobalt-and-violet stone climbing toward a single bright beacon at its crown. This is the MAPPING-MUTATION band: the cues stay simple TAP cues, but the color->button code (the Xbox default blue=X, green=A, red=B, yellow=Y you learned in the Atrium) is SCRAMBLED per floor, and the scramble deepens as you climb. Floor 1 swaps a single color-pair (one rule bends); floor 2 swaps two pairs; floor 3 runs a three-color cycle; the crown floor is a full DERANGEMENT where no color keeps its home button — the decode is now the whole difficulty, not speed. Hero landmark: the Beacon Obelisk, a faceted violet-cobalt obelisk topped by a bright cyan crystal beacon that you orient by from anywhere in the band. Palette + legibility plan: a deep navy/cobalt/violet stone base kept dark and cool so the bright cyan beacon and accent POP off it (relative-luminance spread well over the 0.3 threshold — the dark stone reads as silhouette, the beacon as light). DISTINCT from its nearest sibling, the Atrium: the Atrium is fully WARM (amber stone, lantern-gold, golden sky) and fully CALM (baseline mapping); the Spire is COOLER, cleaner, and taller — cold cobalt/violet stone against a deep night-blue sky with a cyan beacon instead of a warm gold lantern, and it is the first band that actively subverts the mapping. The mean-palette signatures sit far apart, so the two never blend.",
+  "artKitId": "spire",
+  "escalationAxis": "mapping",
+  "look": {
+    "landmark": "The Beacon Obelisk",
+    "palette": ["#161a3a", "#3b3a9e", "#6f5cf0", "#0e1230"],
+    "skyColor": "#202a6a",
+    "fogColor": "#1a204a",
+    "accent": "#8fe3ff"
+  },
+  "floors": [
+    {
+      "id": "floor:spire-1",
+      "name": "One Rule Bends",
+      "index": 0,
+      "seed": 2001,
+      "chart": {
+        "bpm": 96,
+        "beats": 28,
+        "colors": ["blue", "green", "red", "yellow"],
+        "density": 0.45
+      },
+      "mapping": { "blue": "A", "green": "X", "red": "B", "yellow": "Y" }
+    },
+    {
+      "id": "floor:spire-2",
+      "name": "Two Swaps",
+      "index": 1,
+      "seed": 2002,
+      "chart": {
+        "bpm": 102,
+        "beats": 30,
+        "colors": ["blue", "green", "red", "yellow"],
+        "density": 0.5
+      },
+      "mapping": { "blue": "A", "green": "X", "red": "Y", "yellow": "B" }
+    },
+    {
+      "id": "floor:spire-3",
+      "name": "The Cycle",
+      "index": 2,
+      "seed": 2003,
+      "chart": {
+        "bpm": 108,
+        "beats": 32,
+        "colors": ["blue", "green", "red", "yellow"],
+        "density": 0.55
+      },
+      "mapping": { "blue": "A", "green": "B", "red": "X", "yellow": "Y" }
+    },
+    {
+      "id": "floor:spire-crown",
+      "name": "Spire Crown",
+      "index": 3,
+      "seed": 2004,
+      "chart": {
+        "bpm": 114,
+        "beats": 32,
+        "colors": ["blue", "green", "red", "yellow"],
+        "density": 0.6
+      },
+      "mapping": { "blue": "A", "green": "B", "red": "Y", "yellow": "X" }
+    }
+  ],
+  "tags": ["escalation", "cool", "mapping", "spire"]
+}
