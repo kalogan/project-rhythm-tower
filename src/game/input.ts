@@ -28,8 +28,15 @@ export interface InputSource {
 /**
  * @param getTimeSec returns the current audio time (the master clock)
  * @param onPress called on each rising-edge press with (button, audioTimeSec)
+ * @param onRelease OPTIONAL — called on each falling-edge release (button, audioTimeSec).
+ *   Needed only by HOLD cues (an early release breaks the hold). Existing callers that
+ *   pass no `onRelease` are unaffected.
  */
-export function createInput(getTimeSec: () => number, onPress: (button: Button, timeSec: number) => void): InputSource {
+export function createInput(
+  getTimeSec: () => number,
+  onPress: (button: Button, timeSec: number) => void,
+  onRelease?: (button: Button, timeSec: number) => void,
+): InputSource {
   const onKeyDown = (e: KeyboardEvent): void => {
     if (e.repeat) return;
     const button = KEY_TO_BUTTON[e.code];
@@ -38,9 +45,17 @@ export function createInput(getTimeSec: () => number, onPress: (button: Button, 
       onPress(button, getTimeSec());
     }
   };
+  const onKeyUp = (e: KeyboardEvent): void => {
+    const button = KEY_TO_BUTTON[e.code];
+    if (button) {
+      e.preventDefault();
+      onRelease?.(button, getTimeSec());
+    }
+  };
   window.addEventListener('keydown', onKeyDown);
+  window.addEventListener('keyup', onKeyUp);
 
-  // Gamepad has no events for button-down; we poll and detect rising edges.
+  // Gamepad has no events for button-down/up; we poll and detect rising + falling edges.
   const prevPressed = new Map<number, boolean>();
 
   return {
@@ -52,13 +67,19 @@ export function createInput(getTimeSec: () => number, onPress: (button: Button, 
           const index = Number(indexStr);
           const pressed = pad.buttons[index]?.pressed ?? false;
           const key = pad.index * 100 + index;
-          if (pressed && !prevPressed.get(key)) {
+          const was = prevPressed.get(key) ?? false;
+          if (pressed && !was) {
             onPress(PAD_INDEX_TO_BUTTON[index] as Button, getTimeSec());
+          } else if (!pressed && was) {
+            onRelease?.(PAD_INDEX_TO_BUTTON[index] as Button, getTimeSec());
           }
           prevPressed.set(key, pressed);
         }
       }
     },
-    dispose: () => window.removeEventListener('keydown', onKeyDown),
+    dispose: () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+    },
   };
 }

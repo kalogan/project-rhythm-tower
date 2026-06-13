@@ -1,4 +1,5 @@
 import type { BeatGrid } from './beatGrid.js';
+import { beatToTime } from './beatGrid.js';
 import type { Button, Cue, ColorMapping } from './cue.js';
 import { DEFAULT_MAPPING, expectedButtons } from './cue.js';
 import type { Chart } from './chart.js';
@@ -6,6 +7,14 @@ import type { JudgeWindows, Verdict } from './judgment.js';
 import { DEFAULT_WINDOWS, timingError, timingVerdict, windowPassed } from './judgment.js';
 import type { FloorScore } from './scoring.js';
 import { scoreFloor } from './scoring.js';
+
+/** Beats a hold lasts when its `holdBeats` is unspecified (defensive default). */
+const DEFAULT_HOLD_BEATS = 1;
+
+/** The absolute end time (seconds) of a hold cue: its start beat + holdBeats. */
+function holdEndTime(grid: BeatGrid, cue: Cue): number {
+  return beatToTime(grid, cue.beat + (cue.holdBeats ?? DEFAULT_HOLD_BEATS));
+}
 
 /**
  * Partial progress on a DOUBLE cue: the first correct, in-window button has landed
@@ -16,6 +25,20 @@ import { scoreFloor } from './scoring.js';
 export interface DoublePartial {
   readonly button: Button;
   readonly absErr: number;
+}
+
+/**
+ * In-flight progress on a HOLD cue: the correct button was pressed in the START
+ * window and is being held down. We remember WHICH button (so a release of the
+ * right key can break it) and the absolute START timing error (the held cue grades
+ * by how well it was STARTED, not how long it was held). `broken` flips true if the
+ * player let go before the end window opened — a broken hold is a miss. null = the
+ * hold hasn't been started (or has already resolved).
+ */
+export interface HoldProgress {
+  readonly button: Button;
+  readonly startErr: number;
+  readonly broken: boolean;
 }
 
 /**
@@ -36,6 +59,12 @@ export interface FloorSession {
    * only once BOTH of its expected buttons have landed in-window.
    */
   readonly partials: readonly (DoublePartial | null)[];
+  /**
+   * In-flight HOLD progress per cue, index-aligned to `cues`. null = no hold in
+   * flight (the common case for non-holds and for untouched holds). A hold resolves
+   * at its END time (if still held) or earlier on an early-release break (miss).
+   */
+  readonly holds: readonly (HoldProgress | null)[];
   readonly combo: number;
   readonly maxCombo: number;
 }
@@ -60,6 +89,7 @@ export function createFloorSession(
     cues: chart.cues,
     verdicts: chart.cues.map(() => null),
     partials: chart.cues.map(() => null),
+    holds: chart.cues.map(() => null),
     combo: 0,
     maxCombo: 0,
   };
@@ -68,12 +98,18 @@ export function createFloorSession(
 function withVerdict(session: FloorSession, index: number, verdict: Verdict): FloorSession {
   const verdicts = session.verdicts.slice();
   verdicts[index] = verdict;
-  // Clearing partial progress on resolution keeps the parallel arrays immutable + tidy.
+  // Clearing partial/hold progress on resolution keeps the parallel arrays immutable + tidy.
   let partials: readonly (DoublePartial | null)[] = session.partials;
   if (partials[index] !== null) {
     const next = partials.slice();
     next[index] = null;
     partials = next;
+  }
+  let holds: readonly (HoldProgress | null)[] = session.holds;
+  if (holds[index] !== null) {
+    const next = holds.slice();
+    next[index] = null;
+    holds = next;
   }
   const success = verdict === 'perfect' || verdict === 'good' || verdict === 'avoided';
   const combo = success ? session.combo + 1 : 0;
@@ -81,6 +117,7 @@ function withVerdict(session: FloorSession, index: number, verdict: Verdict): Fl
     ...session,
     verdicts,
     partials,
+    holds,
     combo,
     maxCombo: Math.max(session.maxCombo, combo),
   };
@@ -91,6 +128,13 @@ function withPartial(session: FloorSession, index: number, partial: DoublePartia
   const partials = session.partials.slice();
   partials[index] = partial;
   return { ...session, partials };
+}
+
+/** Record (or update) in-flight hold progress for a cue, immutably. */
+function withHold(session: FloorSession, index: number, hold: HoldProgress): FloorSession {
+  const holds = session.holds.slice();
+  holds[index] = hold;
+  return { ...session, holds };
 }
 
 /**
@@ -148,9 +192,55 @@ export function pressButton(session: FloorSession, button: Button, timeSec: numb
     return { session: withVerdict(session, best, verdict), cueId: cue.id, verdict };
   }
 
+  if (cue.kind === 'hold') {
+    // A HOLD begins on the correct button in the START window. We don't grade yet —
+    // success is granted at the END time IF the button is still held (tick resolves
+    // it). A wrong button fails the cue outright. A repeat press while already holding
+    // is a no-op (it doesn't restart or re-grade an in-flight hold).
+    if (!expected.includes(button)) {
+      return { session: withVerdict(session, best, 'wrong'), cueId: cue.id, verdict: 'wrong' };
+    }
+    if (session.holds[best] !== null) {
+      return { session, cueId: cue.id, verdict: null };
+    }
+    return {
+      session: withHold(session, best, { button, startErr: bestErr, broken: false }),
+      cueId: cue.id,
+      verdict: null,
+    };
+  }
+
   // tap (and any single-button kind): correct button grades by timing, else 'wrong'.
   const verdict = expected.includes(button) ? timingVerdict(bestErr, session.windows) : 'wrong';
   return { session: withVerdict(session, best, verdict), cueId: cue.id, verdict };
+}
+
+/**
+ * Resolve a button RELEASE at `timeSec`. Only meaningful for an in-flight HOLD: if the
+ * held button is released BEFORE the hold's end window opens, the hold broke early ->
+ * 'miss' (resolve the cue now). A release AT/AFTER the end window is fine — holding
+ * through (or letting go once the end has arrived) is a success that tick() grants — so
+ * we ignore it here. A release of an unrelated button, or with no in-flight hold, is a
+ * harmless stray (no penalty). Same PressResult shape as pressButton.
+ */
+export function releaseButton(session: FloorSession, button: Button, timeSec: number): PressResult {
+  for (let i = 0; i < session.cues.length; i++) {
+    if (session.verdicts[i] !== null) continue;
+    const hold = session.holds[i];
+    if (hold === null || hold === undefined || hold.broken) continue;
+    if (hold.button !== button) continue;
+    const cue = session.cues[i] as Cue;
+    // The end window opens `goodSec` before the hold's nominal end time: releasing once
+    // the cue is at/inside its end window counts as holding through (success at tick).
+    const endOpens = holdEndTime(session.grid, cue) - session.windows.goodSec;
+    if (timeSec >= endOpens) {
+      // Held long enough — let go is fine; success is granted at/after the end by tick.
+      return { session, cueId: cue.id, verdict: null };
+    }
+    // Let go too early: the hold breaks -> miss, resolved immediately.
+    return { session: withVerdict(session, i, 'miss'), cueId: cue.id, verdict: 'miss' };
+  }
+  return { session, cueId: null, verdict: null };
 }
 
 /**
@@ -164,6 +254,25 @@ export function tick(session: FloorSession, timeSec: number): FloorSession {
   for (let i = 0; i < session.cues.length; i++) {
     if (next.verdicts[i] !== null) continue;
     const cue = session.cues[i] as Cue;
+
+    if (cue.kind === 'hold') {
+      const hold = next.holds[i];
+      if (hold !== null && hold !== undefined && !hold.broken) {
+        // An actively-held hold is judged by its END time, not its start window: once
+        // the end time has arrived, the player held through -> grade by the start error.
+        if (timeSec >= holdEndTime(session.grid, cue)) {
+          next = withVerdict(next, i, timingVerdict(hold.startErr, session.windows));
+        }
+        // Still mid-hold: do NOT miss it just because the start window closed.
+        continue;
+      }
+      // No active hold: an un-started hold misses once its START window closes.
+      if (windowPassed(session.grid, cue, timeSec, session.windows)) {
+        next = withVerdict(next, i, 'miss');
+      }
+      continue;
+    }
+
     if (windowPassed(session.grid, cue, timeSec, session.windows)) {
       next = withVerdict(next, i, cue.kind === 'decoy' ? 'avoided' : 'miss');
     }
