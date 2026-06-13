@@ -11,11 +11,13 @@ Greenfield scaffold. **Built & tested:** the toolchain (TS strict · Vite · Vit
 ESLint · dependency-cruiser · CI) and the **deterministic core** (`src/core`: PRNG, clock,
 beat grid, color→button cues + mapping, deterministic chart generator, judgment, scoring,
 pure floor-session reducer). **Scaffolded (first vertical slice):** Zod content schemas +
-the `atrium` band pack + golden fixture, the content/biome lint CLIs, and a thin r3f
-backdrop + DOM cue/HUD app shell. Mobile/portrait play (responsive vertical falling lane +
-split two-per-side touch controls) and a Vercel deploy config have landed. **Not built yet —
-don't assume:** real procedural audio synthesis, full hold/double cue handling, more bands,
-atmosphere/bloom. **Don't rebuild the core.** See brief §4 for the live source of truth.
+the content/biome lint CLIs, and a climbing-tower r3f backdrop + DOM cue/HUD app shell.
+Mobile/portrait play + a Vercel deploy config are in. **THREE bands climb end-to-end:**
+Atrium (baseline) → Spire (mapping mutation) → Verdant Canopy (decoys + doubles; doubles
+need BOTH buttons). A swordfighter at the hit point swings per-button attacks + shatters
+cues, with flash/shake/slash juice. **Not built yet — don't assume:** real procedural audio
+(still blips), HOLD cues (need input-release plumbing), a tempo-ramp band, atmosphere/bloom,
+real fighter art (placeholder atlas). **Don't rebuild the core.** See brief §4.
 
 **Shared-file footgun:** the files multiple builders tend to touch — the routing seam
 (`src/game/resolveArtKit.ts` once it exists), the content registries (`src/content/registries/*`),

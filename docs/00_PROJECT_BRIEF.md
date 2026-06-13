@@ -40,11 +40,15 @@ dependency-cruiser arch-guard, CI), and the **deterministic core** (`src/core`):
 PRNG, injected clock, beat grid, color→button cue model + mapping, deterministic chart
 generator, judgment windows, scoring, and a pure floor-session reducer — all unit
 tested. Content schemas (Zod), the first band pack (`atrium`), content/biome lints, and
-a thin r3f backdrop + DOM cue-layer app shell are scaffolded as the first vertical
-slice. Mobile/portrait play (responsive vertical falling lane + split two-per-side
-touch controls) and a Vercel deploy config have landed. NOT yet built: real procedural
-audio synthesis, full hold/double cue handling, additional bands, atmosphere/bloom.
-Don't rebuild the core.
+a climbing-tower r3f backdrop (downward-scrolling parallax) + DOM cue-layer app shell.
+Mobile/portrait play (responsive vertical falling lane + split two-per-side touch
+controls) and a Vercel deploy config are in. THREE bands climb end-to-end: Atrium
+(baseline), Spire (mapping mutation), Verdant Canopy (new cue kinds — decoys + doubles;
+doubles require BOTH buttons in-window). A swordfighter stands at the hit point and
+swings a per-button attack, shattering well-timed cues, with hit flash / shake / blade
+slash juice. NOT yet built: real procedural audio synthesis (still blips), HOLD cues
+(need input-release plumbing), a tempo-ramp band, atmosphere/bloom, real fighter art
+(placeholder atlas). Don't rebuild the core.
 
 ## 5. Scope — IN vs OUT (be ruthless)
 - **In (now):** the decode-cue rhythm loop; floors-as-checkpoints; keyboard + gamepad +
