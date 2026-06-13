@@ -20,6 +20,9 @@ import { toChartSpec, type Floor } from '../content/schemas.js';
 import type { AudioDriver } from './audio/audioDriver.js';
 import { createInput } from './input.js';
 import { TouchControls } from './TouchControls.js';
+import { bakeKnightAtlas, SpriteAnimator } from './sprite/spriteAtlas.js';
+import { attackClipFor } from './sprite/clips.js';
+import { ShatterField } from './sprite/shatter.js';
 
 const CUE_HEX: Readonly<Record<CueColor, string>> = {
   blue: '#3b82f6',
@@ -40,6 +43,16 @@ const PX_PER_SEC = 240;
 /** Distance of the hit line from the lane's far edge (px). */
 const HIT_INSET = 160;
 
+/** The strike point (where cues are judged) for the current canvas orientation. */
+function strikePoint(canvas: HTMLCanvasElement): { x: number; y: number; portrait: boolean } {
+  const portrait = canvas.height >= canvas.width;
+  return {
+    portrait,
+    x: portrait ? canvas.width / 2 : HIT_INSET,
+    y: portrait ? canvas.height * 0.7 : canvas.height * 0.42,
+  };
+}
+
 /** Detect touch/portrait so we show thumb controls and reserve room for them. */
 function useShowTouch(): boolean {
   const [show, setShow] = useState(false);
@@ -58,9 +71,10 @@ function useShowTouch(): boolean {
 
 /**
  * Runs ONE floor: builds the deterministic chart, drives audio + input (keyboard,
- * gamepad, touch), and renders the cue track + HUD imperatively to a canvas. The lane
+ * gamepad, touch), and renders the cue track + a swordfighter at the hit point who
+ * swings (a per-button attack) on each press and shatters a well-timed cue. The lane
  * is responsive: vertical (cues fall) in portrait, horizontal in landscape. All
- * judgment goes through the core session — the canvas only draws its state.
+ * judgment goes through the core session — the view only draws its state.
  */
 export function FloorPlayer({
   floor,
@@ -89,6 +103,9 @@ export function FloorPlayer({
     let session: FloorSession = createFloorSession(chart, grid, mapping);
     const lastCueTime = chart.cues.length > 0 ? beatToTime(grid, chart.cues.at(-1)!.beat) : 0;
 
+    const animator = new SpriteAnimator(bakeKnightAtlas());
+    const shatter = new ShatterField();
+
     const t0 = audio.now() + LEAD_SEC;
     audio.scheduleFloor(grid, chart, t0);
     const floorTime = (): number => audio.now() - t0;
@@ -97,7 +114,14 @@ export function FloorPlayer({
     const handlePress = (button: Button, t: number): void => {
       const res = pressButton(session, button, t);
       session = res.session;
+      animator.play(attackClipFor(button), t); // the character always swings on input
       if (res.verdict) flash = { verdict: res.verdict, at: t };
+      // A connecting strike shatters the struck cue in its colour at the hit point.
+      if ((res.verdict === 'perfect' || res.verdict === 'good') && res.cueId !== null) {
+        const cue = chart.cues[res.cueId];
+        const sp = strikePoint(canvas);
+        shatter.burst(sp.x, sp.y, cue ? CUE_HEX[cue.color] : '#ffffff', res.verdict === 'perfect' ? 20 : 12);
+      }
     };
     pressRef.current = (button) => handlePress(button, floorTime());
 
@@ -112,12 +136,22 @@ export function FloorPlayer({
 
     let raf = 0;
     let done = false;
+    let lastNow = floorTime();
+    let prevMisses = 0;
     const loop = (): void => {
       input.pollGamepad();
       const now = floorTime();
-      session = tick(session, now);
+      const dt = Math.min(0.05, Math.max(0, now - lastNow));
+      lastNow = now;
 
-      draw(ctx2d, canvas, session, chart.cues, grid, mapping, now, flash);
+      session = tick(session, now);
+      // A cue that passed unhit makes the fighter flinch (whiff).
+      const misses = countVerdict(session, 'miss');
+      if (misses > prevMisses) animator.play('miss', now);
+      prevMisses = misses;
+
+      shatter.update(dt);
+      draw(ctx2d, canvas, session, chart.cues, grid, mapping, now, flash, animator, shatter);
 
       if (!done && (isComplete(session) || now > lastCueTime + 1.4)) {
         done = true;
@@ -146,6 +180,12 @@ export function FloorPlayer({
   );
 }
 
+function countVerdict(session: FloorSession, verdict: Verdict): number {
+  let n = 0;
+  for (const v of session.verdicts) if (v === verdict) n++;
+  return n;
+}
+
 const VERDICT_TEXT: Readonly<Record<Verdict, string>> = {
   perfect: 'PERFECT',
   good: 'GOOD',
@@ -171,6 +211,8 @@ function draw(
   mapping: ColorMapping,
   now: number,
   flash: { verdict: Verdict; at: number } | null,
+  animator: SpriteAnimator,
+  shatter: ShatterField,
 ): void {
   const w = canvas.width;
   const h = canvas.height;
@@ -178,25 +220,20 @@ function draw(
 
   ctx.clearRect(0, 0, w, h);
 
-  // Travel axis. Portrait: cues FALL down a vertical lane to a hit line above the
-  // thumb buttons. Landscape: cues approach a vertical hit line from the right.
+  // Travel axis. Portrait: cues FALL down a vertical lane to a hit point above the
+  // thumb buttons. Landscape: cues approach the hit point from the right.
   const hitPos = portrait ? h * 0.7 : HIT_INSET; // y (portrait) or x (landscape)
   const lateral = portrait ? w / 2 : h * 0.42; // x center (portrait) or y center (landscape)
 
-  // Hit line.
-  ctx.strokeStyle = 'rgba(255,255,255,0.85)';
-  ctx.lineWidth = 4;
+  // Subtle hit-zone marker (timing reference) under the fighter.
+  ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+  ctx.lineWidth = 2;
   ctx.beginPath();
-  if (portrait) {
-    ctx.moveTo(lateral - 90, hitPos);
-    ctx.lineTo(lateral + 90, hitPos);
-  } else {
-    ctx.moveTo(hitPos, lateral - 60);
-    ctx.lineTo(hitPos, lateral + 60);
-  }
+  if (portrait) ctx.ellipse(lateral, hitPos, 70, 12, 0, 0, Math.PI * 2);
+  else ctx.ellipse(hitPos, lateral, 12, 60, 0, 0, Math.PI * 2);
   ctx.stroke();
 
-  // Cues.
+  // Cues approaching the hit point.
   for (let i = 0; i < cues.length; i++) {
     const cue = cues[i]!;
     const verdict = session.verdicts[i];
@@ -204,6 +241,8 @@ function draw(
     const cx = portrait ? lateral : hitPos + along;
     const cy = portrait ? hitPos - along : lateral;
     if (portrait ? cy < -60 || cy > h + 60 : cx < hitPos - 120 || cx > w + 60) continue;
+    // A shattered (hit) cue is gone; only draw unresolved / passed-by cues.
+    if (verdict === 'perfect' || verdict === 'good') continue;
 
     ctx.globalAlpha = verdict ? 0.25 : 1;
     ctx.fillStyle = CUE_HEX[cue.color];
@@ -218,36 +257,26 @@ function draw(
     ctx.globalAlpha = 1;
   }
 
-  // Mapping legend. Landscape: always shown bottom-left. Portrait: normally the
-  // tinted thumb buttons teach the (default) mapping, so we hide it — BUT when the
-  // mapping is MUTATED (an escalation band), mobile players need to see the new
-  // color->button table, so we draw a compact legend centered just ABOVE the hit
-  // line (clear of the thumb buttons below).
-  const colors: CueColor[] = ['blue', 'green', 'red', 'yellow'];
-  if (!portrait) {
+  // The swordfighter at the hit point, facing the incoming cues.
+  if (portrait) animator.draw(ctx, now, lateral, hitPos + 40, 1.15, 0);
+  else animator.draw(ctx, now, hitPos, lateral, 1.0, Math.PI / 2);
+
+  // Shatter shards on top.
+  shatter.draw(ctx);
+
+  // Mapping legend. Landscape: always shown bottom-left. Portrait: hidden for the
+  // default map (the tinted thumb buttons teach it), but SHOWN top-centre when the
+  // mapping is MUTATED so mobile players can learn the new colour->button table.
+  const showLegend = !portrait || isMutatedMapping(mapping);
+  if (showLegend) {
     ctx.font = '16px system-ui, sans-serif';
     ctx.textAlign = 'center';
-    colors.forEach((c, i) => {
-      const lx = 40 + i * 64;
-      const ly = h - 48;
+    CUE_COLORS.forEach((c, i) => {
+      const lx = portrait ? w / 2 - 96 + i * 64 : 40 + i * 64;
+      const ly = portrait ? 84 : h - 48;
       ctx.fillStyle = CUE_HEX[c];
       ctx.beginPath();
       ctx.arc(lx, ly, 14, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#0b1020';
-      ctx.fillText(mapping[c], lx, ly + 5);
-    });
-  } else if (isMutatedMapping(mapping)) {
-    ctx.font = '15px system-ui, sans-serif';
-    ctx.textAlign = 'center';
-    const gap = 56;
-    const startX = w / 2 - (gap * (colors.length - 1)) / 2;
-    const ly = hitPos - 44; // just above the hit line, clear of the thumb buttons
-    colors.forEach((c, i) => {
-      const lx = startX + i * gap;
-      ctx.fillStyle = CUE_HEX[c];
-      ctx.beginPath();
-      ctx.arc(lx, ly, 13, 0, Math.PI * 2);
       ctx.fill();
       ctx.fillStyle = '#0b1020';
       ctx.fillText(mapping[c], lx, ly + 5);
@@ -263,7 +292,7 @@ function draw(
   ctx.font = '16px system-ui, sans-serif';
   ctx.fillText(`${resolved}/${cues.length}`, 24, 70);
 
-  // Verdict flash near the hit line.
+  // Verdict flash near the hit point.
   if (flash && now - flash.at < 0.45) {
     ctx.globalAlpha = 1 - (now - flash.at) / 0.45;
     ctx.fillStyle = VERDICT_COLOR[flash.verdict];
