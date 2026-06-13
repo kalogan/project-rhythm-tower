@@ -7,6 +7,8 @@ import {
   generateChart,
   isComplete,
   pressButton,
+  releaseButton,
+  secPerBeat,
   tick,
   type BeatGrid,
   type Button,
@@ -113,7 +115,14 @@ export function FloorPlayer({
 
     const chart = generateChart(toChartSpec(floor), floor.seed);
     let session: FloorSession = createFloorSession(chart, grid, mapping);
-    const lastCueTime = chart.cues.length > 0 ? beatToTime(grid, chart.cues.at(-1)!.beat) : 0;
+    // The last moment any cue can still resolve — a HOLD resolves at its END beat
+    // (start + holdBeats), which can land after the last cue's start beat, so fold
+    // hold tails into the floor-end clock or the floor would cut a long hold short.
+    let lastCueTime = 0;
+    for (const c of chart.cues) {
+      const end = beatToTime(grid, c.beat + (c.kind === 'hold' ? (c.holdBeats ?? 1) : 0));
+      if (end > lastCueTime) lastCueTime = end;
+    }
 
     const animator = new SpriteAnimator(bakeKnightAtlas());
     const shatter = new ShatterField();
@@ -149,7 +158,15 @@ export function FloorPlayer({
     };
     pressRef.current = (button) => handlePress(button, floorTime());
 
-    const input = createInput(floorTime, handlePress);
+    // RELEASE: only matters for an in-flight HOLD. An early let-go breaks it (miss);
+    // letting go at/after the end is fine. The miss whiff is fired by the loop's miss
+    // detector below (it watches the miss count), so we just fold the new session in.
+    const handleRelease = (button: Button, t: number): void => {
+      const res = releaseButton(session, button, t);
+      session = res.session;
+    };
+
+    const input = createInput(floorTime, handlePress, handleRelease);
 
     const resize = (): void => {
       canvas.width = window.innerWidth;
@@ -162,6 +179,9 @@ export function FloorPlayer({
     let done = false;
     let lastNow = floorTime();
     let prevMisses = 0;
+    // Pre-allocated: which HOLD cues have already had their completion FX fired, so the
+    // shatter/flash pops once when tick() resolves a held-through hold (no per-frame alloc).
+    const holdFxFired = chart.cues.map(() => false);
     const loop = (): void => {
       input.pollGamepad();
       const now = floorTime();
@@ -169,13 +189,35 @@ export function FloorPlayer({
       lastNow = now;
 
       session = tick(session, now);
-      // A cue that passed unhit makes the fighter flinch (whiff).
+      // A cue that passed unhit (or a hold broken early) makes the fighter flinch (whiff).
       const misses = countVerdict(session, 'miss');
       if (misses > prevMisses) {
         animator.play('miss', now);
         fx.shakeHit(3);
       }
       prevMisses = misses;
+
+      // A HOLD completes inside tick() (not on a press), so fire its shatter/flash here
+      // once, when its verdict first lands as perfect/good.
+      const sp = strikePoint(canvas);
+      for (let i = 0; i < chart.cues.length; i++) {
+        const cue = chart.cues[i]!;
+        if (cue.kind !== 'hold' || holdFxFired[i]) continue;
+        const v = session.verdicts[i];
+        if (v === 'perfect' || v === 'good') {
+          holdFxFired[i] = true;
+          flash = { verdict: v, at: now };
+          if (v === 'perfect') {
+            shatter.burst(sp.x, sp.y, CUE_HEX[cue.color], 22);
+            fx.flashHit(0.5, '#ffd98a');
+            fx.shakeHit(8);
+          } else {
+            shatter.burst(sp.x, sp.y, CUE_HEX[cue.color], 12);
+            fx.flashHit(0.22, '#4ff0d8');
+            fx.shakeHit(2.5);
+          }
+        }
+      }
 
       fx.decay(dt);
       shatter.update(dt);
@@ -320,6 +362,43 @@ function draw(
       ctx.moveTo(cx + 11, cy - 11);
       ctx.lineTo(cx - 11, cy + 11);
       ctx.stroke();
+    } else if (cue.kind === 'hold') {
+      // HOLD: a head you press ON the beat plus a TAIL/bar running back along the lane
+      // for `holdBeats` (the far end is the END time you must hold until). While the cue
+      // is actively held, the bar locks bright + filled (so the read is "keep holding").
+      const holdBeats = cue.holdBeats ?? 1;
+      const tailLen = holdBeats * secPerBeat(grid) * PX_PER_SEC;
+      // The tail extends AWAY from the hit point (later beats = further out): in portrait
+      // upward (toward smaller y), in landscape rightward (toward larger x).
+      const ex = portrait ? cx : cx + tailLen;
+      const ey = portrait ? cy - tailLen : cy;
+      const held = session.holds[i];
+      const active = held !== null && held !== undefined && !held.broken;
+      const HALF = 11; // half-thickness of the lane bar
+      ctx.fillStyle = CUE_HEX[cue.color];
+      ctx.globalAlpha = (verdict ? 0.25 : 1) * (active ? 1 : 0.5);
+      // The connecting bar between head and end-cap.
+      if (portrait) ctx.fillRect(cx - HALF, ey, HALF * 2, cy - ey);
+      else ctx.fillRect(cx, cy - HALF, ex - cx, HALF * 2);
+      ctx.globalAlpha = verdict ? 0.25 : 1;
+      // End-cap ring at the release point (the moment you may let go).
+      ctx.strokeStyle = active ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.6)';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(ex, ey, 13, 0, Math.PI * 2);
+      ctx.stroke();
+      // The head you press on the beat — a bright disc, ringed white while locked.
+      ctx.fillStyle = CUE_HEX[cue.color];
+      ctx.beginPath();
+      ctx.arc(cx, cy, 26, 0, Math.PI * 2);
+      ctx.fill();
+      if (active) {
+        ctx.strokeStyle = 'rgba(255,255,255,0.95)';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(cx, cy, 30, 0, Math.PI * 2);
+        ctx.stroke();
+      }
     } else {
       ctx.fillStyle = CUE_HEX[cue.color];
       ctx.beginPath();
