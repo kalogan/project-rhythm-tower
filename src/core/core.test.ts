@@ -159,3 +159,56 @@ describe('floor session (authoritative judgment)', () => {
     expect(score.miss).toBe(0);
   });
 });
+
+// Sanity-check that rapidly SWITCHING between consecutive cues that need DIFFERENT
+// buttons is actually achievable: the per-press matching must not let one press steal
+// a neighbouring cue, and the hit windows of adjacent cues must not overlap.
+describe('consecutive cues — switching is possible', () => {
+  const fast = makeBeatGrid(120, 4, 0); // fastest current tempo: 0.5s / beat
+
+  it('hit windows of adjacent (1-beat-apart) cues never overlap at current tempos', () => {
+    // Overlap would happen only if a beat were shorter than two good-windows.
+    expect(secPerBeat(fast)).toBeGreaterThan(DEFAULT_WINDOWS.goodSec * 2);
+  });
+
+  it('lands two back-to-back cues that need different buttons (X then A)', () => {
+    const chart = {
+      cues: [
+        { id: 0, beat: 8, color: 'blue', kind: 'tap' } as Cue, // -> X
+        { id: 1, beat: 9, color: 'green', kind: 'tap' } as Cue, // -> A
+      ],
+    };
+    let s = createFloorSession(chart, fast);
+    let r = pressButton(s, 'X', beatToTime(fast, 8));
+    s = r.session;
+    expect(r.cueId).toBe(0);
+    expect(r.verdict).toBe('perfect');
+    r = pressButton(s, 'A', beatToTime(fast, 9));
+    s = r.session;
+    expect(r.cueId).toBe(1);
+    expect(r.verdict).toBe('perfect');
+    const score = finalize(s);
+    expect(score.miss).toBe(0);
+    expect(score.wrong).toBe(0);
+    expect(score.maxCombo).toBe(2);
+  });
+
+  it('a press for the first cue does not steal the second (resolves them in order)', () => {
+    const chart = {
+      cues: [
+        { id: 0, beat: 8, color: 'blue', kind: 'tap' } as Cue,
+        { id: 1, beat: 9, color: 'red', kind: 'tap' } as Cue, // -> B
+      ],
+    };
+    let s = createFloorSession(chart, fast);
+    // Press at cue 0's time: cue 1 is 0.5s away, well outside its window, so cue 0 wins.
+    const r0 = pressButton(s, 'X', beatToTime(fast, 8));
+    s = r0.session;
+    expect(r0.cueId).toBe(0);
+    // Cue 1 is still unresolved and lands on its own press.
+    const r1 = pressButton(s, 'B', beatToTime(fast, 9));
+    s = r1.session;
+    expect(r1.cueId).toBe(1);
+    expect(r1.verdict).toBe('perfect');
+  });
+});

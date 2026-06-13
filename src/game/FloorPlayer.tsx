@@ -23,12 +23,20 @@ import { TouchControls } from './TouchControls.js';
 import { bakeKnightAtlas, SpriteAnimator } from './sprite/spriteAtlas.js';
 import { attackClipFor } from './sprite/clips.js';
 import { ShatterField } from './sprite/shatter.js';
+import { Fx } from './fx.js';
 
 const CUE_HEX: Readonly<Record<CueColor, string>> = {
   blue: '#3b82f6',
   green: '#22c55e',
   red: '#ef4444',
   yellow: '#eab308',
+};
+
+const BUTTON_HEX: Readonly<Record<Button, string>> = {
+  X: '#3b82f6',
+  A: '#22c55e',
+  B: '#ef4444',
+  Y: '#eab308',
 };
 
 const CUE_COLORS: readonly CueColor[] = ['blue', 'green', 'red', 'yellow'];
@@ -105,6 +113,7 @@ export function FloorPlayer({
 
     const animator = new SpriteAnimator(bakeKnightAtlas());
     const shatter = new ShatterField();
+    const fx = new Fx();
 
     const t0 = audio.now() + LEAD_SEC;
     audio.scheduleFloor(grid, chart, t0);
@@ -115,12 +124,23 @@ export function FloorPlayer({
       const res = pressButton(session, button, t);
       session = res.session;
       animator.play(attackClipFor(button), t); // the character always swings on input
+      fx.slash(BUTTON_HEX[button], t); // blade trail tinted with the pressed button
       if (res.verdict) flash = { verdict: res.verdict, at: t };
-      // A connecting strike shatters the struck cue in its colour at the hit point.
-      if ((res.verdict === 'perfect' || res.verdict === 'good') && res.cueId !== null) {
+
+      const sp = strikePoint(canvas);
+      if (res.verdict === 'perfect' && res.cueId !== null) {
         const cue = chart.cues[res.cueId];
-        const sp = strikePoint(canvas);
-        shatter.burst(sp.x, sp.y, cue ? CUE_HEX[cue.color] : '#ffffff', res.verdict === 'perfect' ? 20 : 12);
+        shatter.burst(sp.x, sp.y, cue ? CUE_HEX[cue.color] : '#ffffff', 22);
+        fx.flashHit(0.5, '#ffd98a'); // gold pop on a perfect
+        fx.shakeHit(8);
+      } else if (res.verdict === 'good' && res.cueId !== null) {
+        const cue = chart.cues[res.cueId];
+        shatter.burst(sp.x, sp.y, cue ? CUE_HEX[cue.color] : '#ffffff', 12);
+        fx.flashHit(0.22, '#4ff0d8');
+        fx.shakeHit(2.5);
+      } else if (res.verdict === 'wrong') {
+        shatter.burst(sp.x, sp.y, '#ffffff', 9); // a white clash spark on a bad parry
+        fx.shakeHit(4.5);
       }
     };
     pressRef.current = (button) => handlePress(button, floorTime());
@@ -147,11 +167,15 @@ export function FloorPlayer({
       session = tick(session, now);
       // A cue that passed unhit makes the fighter flinch (whiff).
       const misses = countVerdict(session, 'miss');
-      if (misses > prevMisses) animator.play('miss', now);
+      if (misses > prevMisses) {
+        animator.play('miss', now);
+        fx.shakeHit(3);
+      }
       prevMisses = misses;
 
+      fx.decay(dt);
       shatter.update(dt);
-      draw(ctx2d, canvas, session, chart.cues, grid, mapping, now, flash, animator, shatter);
+      draw(ctx2d, canvas, session, chart.cues, grid, mapping, now, flash, animator, shatter, fx);
 
       if (!done && (isComplete(session) || now > lastCueTime + 1.4)) {
         done = true;
@@ -213,6 +237,7 @@ function draw(
   flash: { verdict: Verdict; at: number } | null,
   animator: SpriteAnimator,
   shatter: ShatterField,
+  fx: Fx,
 ): void {
   const w = canvas.width;
   const h = canvas.height;
@@ -224,6 +249,11 @@ function draw(
   // thumb buttons. Landscape: cues approach the hit point from the right.
   const hitPos = portrait ? h * 0.7 : HIT_INSET; // y (portrait) or x (landscape)
   const lateral = portrait ? w / 2 : h * 0.42; // x center (portrait) or y center (landscape)
+
+  // Camera shake wraps the whole scene; the flash overlay is drawn after (no shake).
+  const shake = fx.shakeOffset();
+  ctx.save();
+  ctx.translate(shake.x, shake.y);
 
   // Subtle hit-zone marker (timing reference) under the fighter.
   ctx.strokeStyle = 'rgba(255,255,255,0.4)';
@@ -258,11 +288,15 @@ function draw(
   }
 
   // The swordfighter at the hit point, facing the incoming cues.
+  const facing = portrait ? 0 : Math.PI / 2;
   if (portrait) animator.draw(ctx, now, lateral, hitPos + 40, 1.15, 0);
-  else animator.draw(ctx, now, hitPos, lateral, 1.0, Math.PI / 2);
+  else animator.draw(ctx, now, hitPos, lateral, 1.0, facing);
 
-  // Shatter shards on top.
+  // Blade slash arc + shatter shards on top.
+  fx.drawSlash(ctx, portrait ? lateral : hitPos, portrait ? hitPos : lateral, now, facing);
   shatter.draw(ctx);
+
+  ctx.restore(); // end camera-shake transform; UI below is stable
 
   // Mapping legend. Landscape: always shown bottom-left. Portrait: hidden for the
   // default map (the tinted thumb buttons teach it), but SHOWN top-centre when the
@@ -302,4 +336,7 @@ function draw(
     else ctx.fillText(VERDICT_TEXT[flash.verdict], hitPos, lateral - 80);
     ctx.globalAlpha = 1;
   }
+
+  // Full-screen hit flash, last and shake-independent.
+  fx.drawFlash(ctx, w, h);
 }
