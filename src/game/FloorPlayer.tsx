@@ -6,6 +6,7 @@ import {
   finalize,
   generateChart,
   isComplete,
+  pointsForVerdicts,
   pressButton,
   releaseButton,
   secPerBeat,
@@ -437,8 +438,16 @@ function draw(
     });
   }
 
+  // Score, big at the top centre.
+  const points = pointsForVerdicts(session.verdicts);
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#ffd98a';
+  ctx.font = 'bold 36px system-ui, sans-serif';
+  ctx.fillText(points.toLocaleString(), w / 2, 50);
+
   // HUD: combo + progress (top-left).
-  const resolved = session.verdicts.filter((v) => v !== null).length;
+  let resolved = 0;
+  for (const v of session.verdicts) if (v !== null) resolved++;
   ctx.textAlign = 'left';
   ctx.fillStyle = '#fff';
   ctx.font = 'bold 22px system-ui, sans-serif';

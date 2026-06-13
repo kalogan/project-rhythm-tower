@@ -4,6 +4,7 @@ import { DEFAULT_MAPPING, expectedButtons, type Cue, type ColorMapping } from '.
 import { makeBeatGrid, beatToTime, timeToBeat, secPerBeat } from './beatGrid.js';
 import { generateChart, MIN_CUE_GAP_SEC, MIN_CUE_GAP_FLOOR_SEC, type ChartSpec } from './chart.js';
 import { DEFAULT_WINDOWS, timingVerdict } from './judgment.js';
+import { pointsForVerdicts, scoreFloor } from './scoring.js';
 import { createFloorSession, pressButton, releaseButton, tick, finalize, isComplete } from './session.js';
 
 const BAND1_SPEC: ChartSpec = {
@@ -107,6 +108,34 @@ describe('judgment windows', () => {
     expect(timingVerdict(0.0, DEFAULT_WINDOWS)).toBe('perfect');
     expect(timingVerdict(0.1, DEFAULT_WINDOWS)).toBe('good');
     expect(timingVerdict(0.3, DEFAULT_WINDOWS)).toBe('miss');
+  });
+});
+
+describe('points', () => {
+  it('scores nothing for an empty / all-miss sequence', () => {
+    expect(pointsForVerdicts([])).toBe(0);
+    expect(pointsForVerdicts([null, null])).toBe(0);
+    expect(pointsForVerdicts(['miss', 'wrong'])).toBe(0);
+  });
+
+  it('adds a base value plus a rising combo bonus for a streak', () => {
+    // perfect(100) + perfect(100+10) + perfect(100+20) = 330
+    expect(pointsForVerdicts(['perfect', 'perfect', 'perfect'])).toBe(330);
+  });
+
+  it('breaks the combo bonus on a miss or wrong', () => {
+    // perfect(100), miss(reset), perfect(100 again, combo restarted) = 200
+    expect(pointsForVerdicts(['perfect', 'miss', 'perfect'])).toBe(200);
+  });
+
+  it('scores good and dodged-decoy as partial successes that keep the combo', () => {
+    // perfect(100) + good(60+10) + avoided(80+20) = 270
+    expect(pointsForVerdicts(['perfect', 'good', 'avoided'])).toBe(270);
+  });
+
+  it('is surfaced on FloorScore.points (same as pointsForVerdicts)', () => {
+    const verdicts = ['perfect', 'good', 'miss', 'perfect'] as const;
+    expect(scoreFloor([...verdicts], 2).points).toBe(pointsForVerdicts([...verdicts]));
   });
 });
 
