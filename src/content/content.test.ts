@@ -6,6 +6,7 @@ import { BUTTONS } from '../core/cue.js';
 import golden from './__fixtures__/golden.atrium-crown.json' with { type: 'json' };
 import goldenSpire from './__fixtures__/golden.spire-crown.json' with { type: 'json' };
 import goldenVerdant from './__fixtures__/golden.verdant-crown.json' with { type: 'json' };
+import goldenSummit from './__fixtures__/golden.summit-crown.json' with { type: 'json' };
 
 describe('content packs', () => {
   it('loads and validates every band', () => {
@@ -56,6 +57,76 @@ describe('golden fixture (determinism pin)', () => {
     const chart = generateChart(toChartSpec(floor), floor.seed);
     expect(chart.cues.length).toBe(goldenVerdant.cueCount);
     expect(chart.cues).toEqual(goldenVerdant.cues);
+  });
+
+  it('regenerates the summit-crown chart byte-identically (high-tempo, guard active)', () => {
+    const band = BANDS.find((b) => b.id === 'pack:summit')!;
+    const floor = band.floors.find((f) => f.id === goldenSummit.floorId)!;
+    const chart = generateChart(toChartSpec(floor), floor.seed);
+    expect(chart.cues.length).toBe(goldenSummit.cueCount);
+    expect(chart.cues).toEqual(goldenSummit.cues);
+  });
+});
+
+describe('band 4 — Stormcrown Summit (tempo escalation)', () => {
+  const summit = BANDS.find((b) => b.id === 'pack:summit');
+
+  it('loads pack:summit as the fourth band (bandOrder 3, axis "tempo")', () => {
+    expect(summit).toBeDefined();
+    expect(summit!.bandOrder).toBe(3);
+    expect(bandByOrder(3)?.id).toBe('pack:summit');
+    expect(summit!.escalationAxis).toBe('tempo');
+  });
+
+  it('keeps the DEFAULT mapping (no per-floor override — the challenge is speed)', () => {
+    for (const floor of summit!.floors) {
+      expect(floor.mapping).toBeUndefined();
+    }
+  });
+
+  it('rises in BPM across the four floors (the tempo axis)', () => {
+    const bpms = summit!.floors.map((f) => f.chart.bpm);
+    expect(bpms.length).toBe(4);
+    for (let i = 1; i < bpms.length; i++) {
+      expect(bpms[i]!).toBeGreaterThan(bpms[i - 1]!);
+    }
+    // Tops out around 200 BPM — the speed the core spacing guard is built for.
+    expect(bpms[bpms.length - 1]!).toBeGreaterThanOrEqual(200);
+  });
+
+  it('sets doubleChance and holdChance 0 on every floor (modest vocabulary)', () => {
+    for (const floor of summit!.floors) {
+      expect(floor.chart.doubleChance ?? 0).toBe(0);
+      expect(floor.chart.holdChance ?? 0).toBe(0);
+    }
+  });
+
+  it('keeps early floors decoy-free and only sprinkles decoys on the crown', () => {
+    const early = summit!.floors.filter((f) => f.id !== 'floor:summit-crown');
+    for (const floor of early) expect(floor.chart.decoyChance ?? 0).toBe(0);
+    const crown = summit!.floors.find((f) => f.id === 'floor:summit-crown')!;
+    expect(crown.chart.decoyChance ?? 0).toBeGreaterThan(0);
+    expect(crown.chart.decoyChance ?? 0).toBeLessThanOrEqual(0.15);
+  });
+
+  it('emits only taps (and, on the crown, the odd decoy) — never doubles or holds', () => {
+    for (const floor of summit!.floors) {
+      const chart = generateChart(toChartSpec(floor), floor.seed);
+      expect(chart.cues.every((c) => c.kind === 'tap' || c.kind === 'decoy')).toBe(true);
+      expect(chart.cues.some((c) => c.kind === 'double' || c.kind === 'hold')).toBe(false);
+    }
+  });
+
+  it('never places two cues closer than two hit-windows apart, even at top tempo', () => {
+    for (const floor of summit!.floors) {
+      const chart = generateChart(toChartSpec(floor), floor.seed);
+      const secPerBeat = 60 / floor.chart.bpm;
+      for (let i = 1; i < chart.cues.length; i++) {
+        const gapSec = (chart.cues[i]!.beat - chart.cues[i - 1]!.beat) * secPerBeat;
+        // 2 * goodSec = 0.28s; the placed-cue gap must stay above the overlap floor.
+        expect(gapSec).toBeGreaterThan(0.28);
+      }
+    }
   });
 });
 
