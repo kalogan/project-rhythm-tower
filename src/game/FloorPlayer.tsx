@@ -54,17 +54,12 @@ function isMutatedMapping(mapping: ColorMapping): boolean {
 
 const LEAD_SEC = 2.0;
 const PX_PER_SEC = 240;
-/** Distance of the hit line from the lane's far edge (px). */
-const HIT_INSET = 160;
 
-/** The strike point (where cues are judged) for the current canvas orientation. */
-function strikePoint(canvas: HTMLCanvasElement): { x: number; y: number; portrait: boolean } {
-  const portrait = canvas.height >= canvas.width;
-  return {
-    portrait,
-    x: portrait ? canvas.width / 2 : HIT_INSET,
-    y: portrait ? canvas.height * 0.7 : canvas.height * 0.42,
-  };
+/** The strike point (where cues are judged): the lane is ALWAYS a centred vertical
+ * falling lane — same on desktop and mobile — with the hit point low (above where the
+ * thumb buttons sit on touch devices). */
+function strikePoint(canvas: HTMLCanvasElement): { x: number; y: number } {
+  return { x: canvas.width / 2, y: canvas.height * 0.7 };
 }
 
 /** Detect touch/portrait so we show thumb controls and reserve room for them. */
@@ -87,8 +82,9 @@ function useShowTouch(): boolean {
  * Runs ONE floor: builds the deterministic chart, drives audio + input (keyboard,
  * gamepad, touch), and renders the cue track + a swordfighter at the hit point who
  * swings (a per-button attack) on each press and shatters a well-timed cue. The lane
- * is responsive: vertical (cues fall) in portrait, horizontal in landscape. All
- * judgment goes through the core session — the view only draws its state.
+ * is ALWAYS a centred vertical falling lane — identical on desktop and mobile, so the
+ * fighter sits in the same place regardless of screen size. All judgment goes through
+ * the core session — the view only draws its state.
  */
 export function FloorPlayer({
   floor,
@@ -106,6 +102,11 @@ export function FloorPlayer({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const pressRef = useRef<((button: Button) => void) | null>(null);
   const showTouch = useShowTouch();
+  // The draw loop reads this each frame to decide the mapping legend: when there are
+  // NO thumb buttons (desktop), the legend must always show since nothing else teaches
+  // the colour->button map. Kept in a ref so a resize doesn't restart the floor.
+  const showTouchRef = useRef(showTouch);
+  showTouchRef.current = showTouch;
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -221,7 +222,8 @@ export function FloorPlayer({
 
       fx.decay(dt);
       shatter.update(dt);
-      draw(ctx2d, canvas, session, chart.cues, grid, mapping, now, flash, animator, shatter, fx);
+      // No thumb buttons (desktop) => always show the legend (nothing else teaches it).
+      draw(ctx2d, canvas, session, chart.cues, grid, mapping, now, flash, animator, shatter, fx, !showTouchRef.current);
 
       if (!done && (isComplete(session) || now > lastCueTime + 1.4)) {
         done = true;
@@ -284,17 +286,17 @@ function draw(
   animator: SpriteAnimator,
   shatter: ShatterField,
   fx: Fx,
+  alwaysShowLegend: boolean,
 ): void {
   const w = canvas.width;
   const h = canvas.height;
-  const portrait = h >= w;
 
   ctx.clearRect(0, 0, w, h);
 
-  // Travel axis. Portrait: cues FALL down a vertical lane to a hit point above the
-  // thumb buttons. Landscape: cues approach the hit point from the right.
-  const hitPos = portrait ? h * 0.7 : HIT_INSET; // y (portrait) or x (landscape)
-  const lateral = portrait ? w / 2 : h * 0.42; // x center (portrait) or y center (landscape)
+  // The lane is ALWAYS a centred vertical falling lane: cues fall from the top to a
+  // hit point at 70% height, where the fighter stands (same on desktop + mobile).
+  const laneX = w / 2; // horizontal centre of the lane
+  const hitY = h * 0.7; // the strike line
 
   // Camera shake wraps the whole scene; the flash overlay is drawn after (no shake).
   const shake = fx.shakeOffset();
@@ -305,18 +307,17 @@ function draw(
   ctx.strokeStyle = 'rgba(255,255,255,0.4)';
   ctx.lineWidth = 2;
   ctx.beginPath();
-  if (portrait) ctx.ellipse(lateral, hitPos, 70, 12, 0, 0, Math.PI * 2);
-  else ctx.ellipse(hitPos, lateral, 12, 60, 0, 0, Math.PI * 2);
+  ctx.ellipse(laneX, hitY, 70, 12, 0, 0, Math.PI * 2);
   ctx.stroke();
 
-  // Cues approaching the hit point.
+  // Cues falling down the lane toward the hit point.
   for (let i = 0; i < cues.length; i++) {
     const cue = cues[i]!;
     const verdict = session.verdicts[i];
     const along = (beatToTime(grid, cue.beat) - now) * PX_PER_SEC;
-    const cx = portrait ? lateral : hitPos + along;
-    const cy = portrait ? hitPos - along : lateral;
-    if (portrait ? cy < -60 || cy > h + 60 : cx < hitPos - 120 || cx > w + 60) continue;
+    const cx = laneX;
+    const cy = hitY - along;
+    if (cy < -60 || cy > h + 60) continue;
     // A shattered (hit) cue is gone; only draw unresolved / passed-by cues.
     if (verdict === 'perfect' || verdict === 'good') continue;
 
@@ -368,18 +369,16 @@ function draw(
       // is actively held, the bar locks bright + filled (so the read is "keep holding").
       const holdBeats = cue.holdBeats ?? 1;
       const tailLen = holdBeats * secPerBeat(grid) * PX_PER_SEC;
-      // The tail extends AWAY from the hit point (later beats = further out): in portrait
-      // upward (toward smaller y), in landscape rightward (toward larger x).
-      const ex = portrait ? cx : cx + tailLen;
-      const ey = portrait ? cy - tailLen : cy;
+      // The tail extends UP the lane (later beats = higher / further from the hit point).
+      const ex = cx;
+      const ey = cy - tailLen;
       const held = session.holds[i];
       const active = held !== null && held !== undefined && !held.broken;
       const HALF = 11; // half-thickness of the lane bar
       ctx.fillStyle = CUE_HEX[cue.color];
       ctx.globalAlpha = (verdict ? 0.25 : 1) * (active ? 1 : 0.5);
       // The connecting bar between head and end-cap.
-      if (portrait) ctx.fillRect(cx - HALF, ey, HALF * 2, cy - ey);
-      else ctx.fillRect(cx, cy - HALF, ex - cx, HALF * 2);
+      ctx.fillRect(cx - HALF, ey, HALF * 2, cy - ey);
       ctx.globalAlpha = verdict ? 0.25 : 1;
       // End-cap ring at the release point (the moment you may let go).
       ctx.strokeStyle = active ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.6)';
@@ -408,27 +407,27 @@ function draw(
     ctx.globalAlpha = 1;
   }
 
-  // The swordfighter at the hit point, facing the incoming cues.
-  const facing = portrait ? 0 : Math.PI / 2;
-  if (portrait) animator.draw(ctx, now, lateral, hitPos + 40, 1.15, 0);
-  else animator.draw(ctx, now, hitPos, lateral, 1.0, facing);
+  // The swordfighter stands at the hit point, facing up the lane at the falling cues.
+  animator.draw(ctx, now, laneX, hitY + 40, 1.15, 0);
 
   // Blade slash arc + shatter shards on top.
-  fx.drawSlash(ctx, portrait ? lateral : hitPos, portrait ? hitPos : lateral, now, facing);
+  fx.drawSlash(ctx, laneX, hitY, now, 0);
   shatter.draw(ctx);
 
   ctx.restore(); // end camera-shake transform; UI below is stable
 
-  // Mapping legend. Landscape: always shown bottom-left. Portrait: hidden for the
-  // default map (the tinted thumb buttons teach it), but SHOWN top-centre when the
-  // mapping is MUTATED so mobile players can learn the new colour->button table.
-  const showLegend = !portrait || isMutatedMapping(mapping);
+  // Mapping legend. Shown when there are NO thumb buttons to teach it (desktop) OR the
+  // mapping is MUTATED (so players can learn the new colour->button table). Hidden only
+  // on touch devices with the default map, where the tinted thumb buttons already teach
+  // it. Desktop legend sits bottom-centre (clear of the action); mobile sits top-centre
+  // (clear of the thumb buttons).
+  const showLegend = alwaysShowLegend || isMutatedMapping(mapping);
   if (showLegend) {
     ctx.font = '16px system-ui, sans-serif';
     ctx.textAlign = 'center';
+    const ly = alwaysShowLegend ? h - 44 : 84;
     CUE_COLORS.forEach((c, i) => {
-      const lx = portrait ? w / 2 - 96 + i * 64 : 40 + i * 64;
-      const ly = portrait ? 84 : h - 48;
+      const lx = w / 2 - 96 + i * 64;
       ctx.fillStyle = CUE_HEX[c];
       ctx.beginPath();
       ctx.arc(lx, ly, 14, 0, Math.PI * 2);
@@ -447,14 +446,13 @@ function draw(
   ctx.font = '16px system-ui, sans-serif';
   ctx.fillText(`${resolved}/${cues.length}`, 24, 70);
 
-  // Verdict flash near the hit point.
+  // Verdict flash above the hit point.
   if (flash && now - flash.at < 0.45) {
     ctx.globalAlpha = 1 - (now - flash.at) / 0.45;
     ctx.fillStyle = VERDICT_COLOR[flash.verdict];
     ctx.font = 'bold 28px system-ui, sans-serif';
     ctx.textAlign = 'center';
-    if (portrait) ctx.fillText(VERDICT_TEXT[flash.verdict], lateral, hitPos - 110);
-    else ctx.fillText(VERDICT_TEXT[flash.verdict], hitPos, lateral - 80);
+    ctx.fillText(VERDICT_TEXT[flash.verdict], laneX, hitY - 110);
     ctx.globalAlpha = 1;
   }
 
