@@ -12,12 +12,14 @@ ESLint · dependency-cruiser · CI) and the **deterministic core** (`src/core`: 
 beat grid, color→button cues + mapping, deterministic chart generator, judgment, scoring,
 pure floor-session reducer). **Scaffolded (first vertical slice):** Zod content schemas +
 the content/biome lint CLIs, and a climbing-tower r3f backdrop + DOM cue/HUD app shell.
-Mobile/portrait play + a Vercel deploy config are in. **THREE bands climb end-to-end:**
-Atrium (baseline) → Spire (mapping mutation) → Verdant Canopy (decoys + doubles; doubles
-need BOTH buttons). A swordfighter at the hit point swings per-button attacks + shatters
-cues, with flash/shake/slash juice. **Not built yet — don't assume:** real procedural audio
-(still blips), HOLD cues (need input-release plumbing), a tempo-ramp band, atmosphere/bloom,
-real fighter art (placeholder atlas). **Don't rebuild the core.** See brief §4.
+Mobile/portrait play + a Vercel deploy config are in. A **procedural music bed** (percussion,
+bass, low-passed pad on a i–vi–iv–v progression, arpeggio, scale-tuned cue tones) plays per
+floor. **FOUR bands climb end-to-end:** Atrium (baseline) → Spire (mapping mutation) → Verdant
+Canopy (decoys + doubles; doubles need BOTH buttons) → Stormcrown Summit (tempo ramp 132→200
+BPM, guarded by a minimum cue-spacing so windows never overlap). A swordfighter at the hit point
+swings per-button attacks + shatters cues, with flash/shake/slash juice. **Not built yet —
+don't assume:** HOLD cues (need input-release plumbing), atmosphere/bloom, real fighter art
+(placeholder atlas). **Don't rebuild the core.** See brief §4.
 
 **Shared-file footgun:** the files multiple builders tend to touch — the routing seam
 (`src/game/resolveArtKit.ts` once it exists), the content registries (`src/content/registries/*`),

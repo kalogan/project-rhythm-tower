@@ -42,13 +42,14 @@ generator, judgment windows, scoring, and a pure floor-session reducer — all u
 tested. Content schemas (Zod), the first band pack (`atrium`), content/biome lints, and
 a climbing-tower r3f backdrop (downward-scrolling parallax) + DOM cue-layer app shell.
 Mobile/portrait play (responsive vertical falling lane + split two-per-side touch
-controls) and a Vercel deploy config are in. THREE bands climb end-to-end: Atrium
-(baseline), Spire (mapping mutation), Verdant Canopy (new cue kinds — decoys + doubles;
-doubles require BOTH buttons in-window). A swordfighter stands at the hit point and
-swings a per-button attack, shattering well-timed cues, with hit flash / shake / blade
-slash juice. NOT yet built: real procedural audio synthesis (still blips), HOLD cues
-(need input-release plumbing), a tempo-ramp band, atmosphere/bloom, real fighter art
-(placeholder atlas). Don't rebuild the core.
+controls) and a Vercel deploy config are in. A procedural music bed (percussion, bass,
+low-passed pad on a i–vi–iv–v progression, arpeggio, scale-tuned cue tones) plays per
+floor. FOUR bands climb end-to-end: Atrium (baseline), Spire (mapping mutation), Verdant
+Canopy (decoys + doubles; doubles require BOTH buttons), Stormcrown Summit (tempo ramp
+132→200 BPM, guarded by a minimum cue-spacing so hit windows never overlap). A swordfighter
+stands at the hit point and swings a per-button attack, shattering well-timed cues, with
+hit flash / shake / blade slash juice. NOT yet built: HOLD cues (need input-release
+plumbing), atmosphere/bloom, real fighter art (placeholder atlas). Don't rebuild the core.
 
 ## 5. Scope — IN vs OUT (be ruthless)
 - **In (now):** the decode-cue rhythm loop; floors-as-checkpoints; keyboard + gamepad +
