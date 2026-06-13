@@ -1,0 +1,122 @@
+{
+  "schemaVersion": 1,
+  "floorId": "floor:atrium-crown",
+  "seed": 1004,
+  "cueCount": 19,
+  "cues": [
+    {
+      "id": 0,
+      "beat": 4,
+      "color": "green",
+      "kind": "tap"
+    },
+    {
+      "id": 1,
+      "beat": 5,
+      "color": "red",
+      "kind": "tap"
+    },
+    {
+      "id": 2,
+      "beat": 6,
+      "color": "red",
+      "kind": "tap"
+    },
+    {
+      "id": 3,
+      "beat": 8,
+      "color": "yellow",
+      "kind": "tap"
+    },
+    {
+      "id": 4,
+      "beat": 9,
+      "color": "red",
+      "kind": "tap"
+    },
+    {
+      "id": 5,
+      "beat": 10,
+      "color": "red",
+      "kind": "tap"
+    },
+    {
+      "id": 6,
+      "beat": 11,
+      "color": "green",
+      "kind": "tap"
+    },
+    {
+      "id": 7,
+      "beat": 12,
+      "color": "blue",
+      "kind": "tap"
+    },
+    {
+      "id": 8,
+      "beat": 13,
+      "color": "yellow",
+      "kind": "tap"
+    },
+    {
+      "id": 9,
+      "beat": 15,
+      "color": "yellow",
+      "kind": "tap"
+    },
+    {
+      "id": 10,
+      "beat": 16,
+      "color": "red",
+      "kind": "tap"
+    },
+    {
+      "id": 11,
+      "beat": 17,
+      "color": "blue",
+      "kind": "tap"
+    },
+    {
+      "id": 12,
+      "beat": 18,
+      "color": "yellow",
+      "kind": "tap"
+    },
+    {
+      "id": 13,
+      "beat": 21,
+      "color": "green",
+      "kind": "tap"
+    },
+    {
+      "id": 14,
+      "beat": 25,
+      "color": "yellow",
+      "kind": "tap"
+    },
+    {
+      "id": 15,
+      "beat": 28,
+      "color": "green",
+      "kind": "tap"
+    },
+    {
+      "id": 16,
+      "beat": 29,
+      "color": "red",
+      "kind": "tap"
+    },
+    {
+      "id": 17,
+      "beat": 30,
+      "color": "yellow",
+      "kind": "tap"
+    },
+    {
+      "id": 18,
+      "beat": 31,
+      "color": "yellow",
+      "kind": "tap"
+    }
+  ]
+}

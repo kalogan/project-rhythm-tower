@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "id": "pack:atrium",
+  "name": "The Atrium",
+  "bandOrder": 0,
+  "description": "The warm ground floor of the tower — a sunlit stone atrium strung with paper lanterns, where the climb begins. This is the BASELINE band: cues are simple taps and the color->button mapping is the default Xbox face-button code (blue=X, green=A, red=B, yellow=Y), introduced two colors at a time so the decode reflex is taught gently before the tower starts subverting it. Legibility plan: a warm amber base with a single bright lantern-gold landmark that pops, plus cool teal accents for contrast so no color blends into mush. Distinct from its siblings by being the only fully warm, fully calm band — higher bands go cooler and busier.",
+  "artKitId": "atrium",
+  "escalationAxis": "baseline",
+  "look": {
+    "landmark": "The Atrium Lantern",
+    "palette": ["#2a1d12", "#c98a3a", "#ffd98a", "#3a6a6a"],
+    "skyColor": "#e8a85a",
+    "fogColor": "#e6c79a",
+    "accent": "#4ff0d8"
+  },
+  "floors": [
+    {
+      "id": "floor:atrium-1",
+      "name": "First Steps",
+      "index": 0,
+      "seed": 1001,
+      "chart": {
+        "bpm": 90,
+        "beats": 24,
+        "colors": ["blue", "green"],
+        "density": 0.4
+      }
+    },
+    {
+      "id": "floor:atrium-2",
+      "name": "Finding the Beat",
+      "index": 1,
+      "seed": 1002,
+      "chart": {
+        "bpm": 100,
+        "beats": 28,
+        "colors": ["blue", "green", "red"],
+        "density": 0.5
+      }
+    },
+    {
+      "id": "floor:atrium-3",
+      "name": "Four Colors",
+      "index": 2,
+      "seed": 1003,
+      "chart": {
+        "bpm": 110,
+        "beats": 32,
+        "colors": ["blue", "green", "red", "yellow"],
+        "density": 0.55
+      }
+    },
+    {
+      "id": "floor:atrium-crown",
+      "name": "Atrium Crown",
+      "index": 3,
+      "seed": 1004,
+      "chart": {
+        "bpm": 120,
+        "beats": 32,
+        "colors": ["blue", "green", "red", "yellow"],
+        "density": 0.65
+      }
+    }
+  ],
+  "tags": ["start", "warm", "cozy", "baseline"]
+}
