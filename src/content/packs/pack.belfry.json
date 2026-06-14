@@ -13,6 +13,7 @@
     "fogColor": "#1c2c3e",
     "accent": "#e9c98a"
   },
+  "music": { "root": 55, "scale": "lydian", "bass": "triangle", "pad": "sine", "lead": "sine", "arp": "sine" },
   "floors": [
     {
       "id": "floor:belfry-1",

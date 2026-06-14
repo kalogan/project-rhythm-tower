@@ -127,6 +127,7 @@ export function App(): JSX.Element {
           grid={grid}
           mapping={mapping}
           audio={audioRef.current}
+          music={band.music}
           lives={lives}
           runPoints={runPoints}
           onComplete={onComplete}

@@ -13,6 +13,7 @@
     "fogColor": "#163a2a",
     "accent": "#d6ff5c"
   },
+  "music": { "root": 52, "scale": "lydian", "bass": "triangle", "pad": "triangle", "lead": "sawtooth", "arp": "sine" },
   "floors": [
     {
       "id": "floor:verdant-1",

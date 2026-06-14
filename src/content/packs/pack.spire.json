@@ -13,6 +13,7 @@
     "fogColor": "#1a204a",
     "accent": "#8fe3ff"
   },
+  "music": { "root": 50, "scale": "dorian", "bass": "sawtooth", "pad": "sawtooth", "lead": "square", "arp": "triangle" },
   "floors": [
     {
       "id": "floor:spire-1",

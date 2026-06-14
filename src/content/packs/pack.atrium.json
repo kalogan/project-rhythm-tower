@@ -13,6 +13,7 @@
     "fogColor": "#e6c79a",
     "accent": "#4ff0d8"
   },
+  "music": { "root": 53, "scale": "major", "bass": "triangle", "pad": "triangle", "lead": "triangle", "arp": "sine" },
   "floors": [
     {
       "id": "floor:atrium-1",

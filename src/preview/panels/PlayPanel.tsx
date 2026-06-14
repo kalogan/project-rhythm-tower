@@ -139,6 +139,7 @@ export function PlayPanel(): JSX.Element {
           grid={grid}
           mapping={mapping}
           audio={audioRef.current}
+          music={band.music}
           lives={3}
           runPoints={0}
           onComplete={onComplete}

@@ -37,7 +37,10 @@ export function BossActor({ object, getPhase }: { object: Object3D; getPhase: ()
     const g = groupRef.current;
     if (g) {
       g.position.y += (targetY + Math.sin(t * 1.6) * 0.25 - g.position.y) * d;
-      g.rotation.y += dt * (exposed ? 0.15 : 0.55);
+      // Face the player with a menacing sway — never a full spin. Lean in when it lunges.
+      g.rotation.y = Math.sin(t * 0.6) * 0.22;
+      const targetLean = exposed ? 0.26 : 0;
+      g.rotation.x += (targetLean - g.rotation.x) * d;
     }
     const spot = spotRef.current;
     if (spot) {

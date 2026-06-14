@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { Chart, Cue } from '../../core/index.js';
-import { SCALES, colorDegree, midiToFreq, moodFromChart, scaleMidi } from './music.js';
+import { SCALES, colorDegree, midiToFreq, moodFromBandMusic, moodFromChart, scaleMidi } from './music.js';
 
 const chart = (cues: Cue[]): Chart => ({ cues });
 
@@ -50,5 +50,13 @@ describe('music theory', () => {
     expect(colorDegree('green')).toBe(2);
     expect(colorDegree('red')).toBe(4);
     expect(colorDegree('yellow')).toBe(6);
+  });
+
+  it('resolves a band-authored music block into a Mood (key, scale, timbres)', () => {
+    const mood = moodFromBandMusic({ root: 48, scale: 'minor', bass: 'sawtooth', pad: 'sawtooth', lead: 'square', arp: 'triangle' });
+    expect(mood.rootMidi).toBe(48);
+    expect(mood.scaleName).toBe('minor');
+    expect(mood.scale).toBe(SCALES.minor);
+    expect(mood.lead).toBe('square');
   });
 });

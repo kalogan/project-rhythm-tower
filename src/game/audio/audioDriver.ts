@@ -1,7 +1,8 @@
 import type { BeatGrid } from '../../core/beatGrid.js';
 import { beatToTime, secPerBeat } from '../../core/beatGrid.js';
 import type { Chart } from '../../core/index.js';
-import { PROGRESSION, colorDegree, midiToFreq, moodFromChart, scaleMidi, type Mood } from './music.js';
+import type { BandMusic } from '../../content/schemas.js';
+import { PROGRESSION, colorDegree, midiToFreq, moodFromBandMusic, moodFromChart, scaleMidi, type Mood } from './music.js';
 
 /**
  * Procedural Web Audio driver. The AudioContext clock is the MASTER time the core's
@@ -13,8 +14,9 @@ import { PROGRESSION, colorDegree, midiToFreq, moodFromChart, scaleMidi, type Mo
 export interface AudioDriver {
   resume(): Promise<void>;
   now(): number;
-  /** Schedule a floor's full music bed + cue tones starting at `startTimeSec` (audio time). */
-  scheduleFloor(grid: BeatGrid, chart: Chart, startTimeSec: number): void;
+  /** Schedule a floor's full music bed + cue tones at `startTimeSec`. `music` is the
+   *  band's authored sound (key/scale/timbres); omitted -> a key hashed from the chart. */
+  scheduleFloor(grid: BeatGrid, chart: Chart, startTimeSec: number, music?: BandMusic): void;
   stopAll(): void;
 }
 
@@ -93,10 +95,10 @@ export function createAudioDriver(): AudioDriver {
       const barAt = t0 + beatToTime(grid, bar * grid.beatsPerBar) - grid.offsetSec;
       const barDur = spb * grid.beatsPerBar;
       const bassMidi = scaleMidi(mood.rootMidi - 12, mood.scale, deg);
-      voice(midiToFreq(bassMidi), barAt, barDur * 0.95, 0.22, 'triangle', 420);
+      voice(midiToFreq(bassMidi), barAt, barDur * 0.95, 0.22, mood.bass, 420);
       // pad triad (root / third / fifth within the scale), soft + low-passed
       for (const d of [deg, deg + 2, deg + 4]) {
-        voice(midiToFreq(scaleMidi(mood.rootMidi, mood.scale, d)), barAt, barDur * 0.98, 0.05, 'sawtooth', 900);
+        voice(midiToFreq(scaleMidi(mood.rootMidi, mood.scale, d)), barAt, barDur * 0.98, 0.05, mood.pad, 900);
       }
     }
 
@@ -109,24 +111,24 @@ export function createAudioDriver(): AudioDriver {
       voice(9000, at + spb * 0.5, 0.03, 0.04, 'square'); // hat (high blip)
       const deg = PROGRESSION[Math.floor(b / grid.beatsPerBar) % PROGRESSION.length]!;
       const arpMidi = scaleMidi(mood.rootMidi + 12, mood.scale, deg + (b % 4) * 2);
-      voice(midiToFreq(arpMidi), at, 0.16, 0.07, 'triangle');
+      voice(midiToFreq(arpMidi), at, 0.16, 0.07, mood.arp);
     }
   }
 
   return {
     resume: () => ctx.resume(),
     now: () => ctx.currentTime,
-    scheduleFloor: (grid, chart, startTimeSec) => {
-      const mood = moodFromChart(chart);
+    scheduleFloor: (grid, chart, startTimeSec, music) => {
+      const mood = music ? moodFromBandMusic(music) : moodFromChart(chart);
       scheduleBed(grid, chart, startTimeSec, mood);
       // Cue lead tones, tuned into the scale so they sing over the bed.
       for (const cue of chart.cues) {
         const at = startTimeSec + beatToTime(grid, cue.beat);
         const midi = scaleMidi(mood.rootMidi + 24, mood.scale, colorDegree(cue.color));
-        voice(midiToFreq(midi), at, 0.2, 0.16, 'sawtooth');
+        voice(midiToFreq(midi), at, 0.2, 0.16, mood.lead);
         if (cue.kind === 'double' && cue.color2) {
           const midi2 = scaleMidi(mood.rootMidi + 24, mood.scale, colorDegree(cue.color2));
-          voice(midiToFreq(midi2), at, 0.2, 0.14, 'sawtooth');
+          voice(midiToFreq(midi2), at, 0.2, 0.14, mood.lead);
         }
       }
     },

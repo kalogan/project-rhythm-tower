@@ -22,6 +22,7 @@ import {
   type Verdict,
 } from '../core/index.js';
 import type { AudioDriver } from './audio/audioDriver.js';
+import type { BandMusic } from '../content/schemas.js';
 import { createInput } from './input.js';
 import { TouchControls } from './TouchControls.js';
 import { bakeKnightAtlas, SpriteAnimator } from './sprite/spriteAtlas.js';
@@ -93,6 +94,7 @@ export function FloorPlayer({
   grid,
   mapping,
   audio,
+  music,
   lives,
   runPoints,
   onComplete,
@@ -102,6 +104,8 @@ export function FloorPlayer({
   grid: BeatGrid;
   mapping: ColorMapping;
   audio: AudioDriver;
+  /** The band's authored music (key/scale/timbres); omitted -> chart-hashed key. */
+  music?: BandMusic | undefined;
   /** Run-lives remaining (drawn as hearts). */
   lives: number;
   /** Points banked earlier this run (the HUD score = runPoints + this floor's live points). */
@@ -141,7 +145,7 @@ export function FloorPlayer({
     const fx = new Fx();
 
     const t0 = audio.now() + LEAD_SEC;
-    audio.scheduleFloor(grid, chart, t0);
+    audio.scheduleFloor(grid, chart, t0, music);
     const floorTime = (): number => audio.now() - t0;
 
     let flash: { verdict: Verdict; at: number } | null = null;
@@ -262,7 +266,7 @@ export function FloorPlayer({
       audio.stopAll();
       pressRef.current = null;
     };
-  }, [chart, grid, mapping, audio, onComplete]);
+  }, [chart, grid, mapping, audio, music, onComplete]);
 
   return (
     <>

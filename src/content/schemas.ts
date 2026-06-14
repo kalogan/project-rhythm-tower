@@ -57,6 +57,22 @@ export const BandLookSchema = z.object({
 
 export const EscalationAxisSchema = z.enum(['baseline', 'mapping', 'cue-kinds', 'tempo']);
 
+const WaveSchema = z.enum(['sine', 'square', 'sawtooth', 'triangle']);
+export const ScaleNameSchema = z.enum(['minorPentatonic', 'dorian', 'major', 'lydian', 'minor']);
+
+/** A band's musical identity: its key, scale, and per-layer instrument timbres, so each
+ *  zone sounds distinct. Optional — a band without it falls back to a chart-hashed key. */
+export const BandMusicSchema = z.object({
+  /** MIDI root note (e.g. 48 = C3). */
+  root: z.number().int(),
+  scale: ScaleNameSchema,
+  bass: WaveSchema.default('triangle'),
+  pad: WaveSchema.default('sawtooth'),
+  lead: WaveSchema.default('sawtooth'),
+  arp: WaveSchema.default('triangle'),
+});
+export type BandMusic = z.infer<typeof BandMusicSchema>;
+
 /** One band of the tower = a run of floors sharing a look + one escalation axis. */
 export const BandPackSchema = z.object({
   schemaVersion: z.literal(CONTENT_SCHEMA_VERSION),
@@ -68,6 +84,7 @@ export const BandPackSchema = z.object({
   artKitId: z.string().min(1),
   escalationAxis: EscalationAxisSchema,
   look: BandLookSchema,
+  music: BandMusicSchema.optional(),
   floors: z.array(FloorSchema).min(1),
   tags: z.array(z.string()).default([]),
 });
