@@ -3,6 +3,7 @@ import { makePrng } from './prng.js';
 import { DEFAULT_MAPPING, expectedButtons, type Cue, type ColorMapping } from './cue.js';
 import { makeBeatGrid, beatToTime, timeToBeat, secPerBeat } from './beatGrid.js';
 import { generateChart, MIN_CUE_GAP_SEC, MIN_CUE_GAP_FLOOR_SEC, type ChartSpec } from './chart.js';
+import { generateBossChart, phaseAtBeat, type BossSpec } from './boss.js';
 import { DEFAULT_WINDOWS, timingVerdict } from './judgment.js';
 import { MAX_HP, hpStateForVerdicts, pointsForVerdicts, scoreFloor } from './scoring.js';
 import { createFloorSession, pressButton, releaseButton, tick, finalize, isComplete } from './session.js';
@@ -136,6 +137,49 @@ describe('points', () => {
   it('is surfaced on FloorScore.points (same as pointsForVerdicts)', () => {
     const verdicts = ['perfect', 'good', 'miss', 'perfect'] as const;
     expect(scoreFloor([...verdicts], 2).points).toBe(pointsForVerdicts([...verdicts]));
+  });
+});
+
+describe('boss chart (phase: barrage -> weak-spot)', () => {
+  const spec: BossSpec = {
+    bpm: 110,
+    beatsPerBar: 4,
+    phases: 3,
+    barrageBeats: 6,
+    barrageDensity: 0.7,
+    weakSpotBeats: 3,
+    weakSpotColors: ['green', 'red'],
+    decoyColors: ['blue', 'green', 'red', 'yellow'],
+    leadInBeats: 4,
+  };
+
+  it('is deterministic for a given seed', () => {
+    expect(generateBossChart(spec, 99)).toEqual(generateBossChart(spec, 99));
+  });
+
+  it('emits one barrage + one weak-spot phase per cycle', () => {
+    const boss = generateBossChart(spec, 1);
+    expect(boss.phases.length).toBe(spec.phases * 2);
+    expect(boss.phases.filter((p) => p.kind === 'barrage').length).toBe(spec.phases);
+    expect(boss.phases.filter((p) => p.kind === 'weakspot').length).toBe(spec.phases);
+  });
+
+  it('throws DECOYS in barrages and STRIKE taps in weak-spot windows', () => {
+    const boss = generateBossChart(spec, 7);
+    for (const cue of boss.cues) {
+      const phase = phaseAtBeat(boss, cue.beat)!;
+      if (phase.kind === 'barrage') expect(cue.kind).toBe('decoy');
+      else {
+        expect(cue.kind).toBe('tap'); // a weak-spot strike
+        expect(cue.color).toBe(phase.color); // matches the exposed colour
+      }
+    }
+  });
+
+  it('cycles the weak-spot colour across phases (green, red, green…)', () => {
+    const boss = generateBossChart(spec, 3);
+    const weakColors = boss.phases.filter((p) => p.kind === 'weakspot').map((p) => p.color);
+    expect(weakColors).toEqual(['green', 'red', 'green']);
   });
 });
 

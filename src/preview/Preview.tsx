@@ -4,12 +4,14 @@ import { ThemesPanel } from './panels/ThemesPanel.js';
 import { PropsPanel } from './panels/PropsPanel.js';
 import { CuesPanel } from './panels/CuesPanel.js';
 import { ChartsPanel } from './panels/ChartsPanel.js';
+import { BossPanel } from './panels/BossPanel.js';
 
 const TABS = [
   { id: 'themes', label: 'Themes' },
   { id: 'props', label: 'Props' },
   { id: 'cues', label: 'Cues & FX' },
   { id: 'charts', label: 'Charts' },
+  { id: 'boss', label: 'Boss' },
 ] as const;
 
 /**
@@ -26,6 +28,7 @@ export function Preview(): JSX.Element {
       {tab === 'props' && <PropsPanel />}
       {tab === 'cues' && <CuesPanel />}
       {tab === 'charts' && <ChartsPanel />}
+      {tab === 'boss' && <BossPanel />}
 
       {/* Top-centre tab bar, above every panel's own side controls. */}
       <div

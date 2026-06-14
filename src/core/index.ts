@@ -5,6 +5,7 @@ export * from './clock.js';
 export * from './cue.js';
 export * from './beatGrid.js';
 export * from './chart.js';
+export * from './boss.js';
 export * from './judgment.js';
 export * from './scoring.js';
 export * from './session.js';
