@@ -5,6 +5,7 @@ import { PropsPanel } from './panels/PropsPanel.js';
 import { CuesPanel } from './panels/CuesPanel.js';
 import { ChartsPanel } from './panels/ChartsPanel.js';
 import { BossPanel } from './panels/BossPanel.js';
+import { PlayPanel } from './panels/PlayPanel.js';
 
 const TABS = [
   { id: 'themes', label: 'Themes' },
@@ -12,6 +13,7 @@ const TABS = [
   { id: 'cues', label: 'Cues & FX' },
   { id: 'charts', label: 'Charts' },
   { id: 'boss', label: 'Boss' },
+  { id: 'play', label: 'Play' },
 ] as const;
 
 /**
@@ -29,6 +31,7 @@ export function Preview(): JSX.Element {
       {tab === 'cues' && <CuesPanel />}
       {tab === 'charts' && <ChartsPanel />}
       {tab === 'boss' && <BossPanel />}
+      {tab === 'play' && <PlayPanel />}
 
       {/* Top-centre tab bar, above every panel's own side controls. */}
       <div

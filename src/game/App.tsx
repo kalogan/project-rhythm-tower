@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { DEFAULT_MAPPING, makeBeatGrid, type FloorScore } from '../core/index.js';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { DEFAULT_MAPPING, generateChart, makeBeatGrid, type FloorScore } from '../core/index.js';
 import { BANDS } from '../content/packs.js';
+import { toChartSpec } from '../content/schemas.js';
 import { TowerRenderer } from './TowerRenderer.js';
 import { FloorPlayer } from './FloorPlayer.js';
 import { createAudioDriver, type AudioDriver } from './audio/audioDriver.js';
@@ -32,6 +33,7 @@ export function App(): JSX.Element {
   const floor = band.floors[floorIndex]!;
   const grid = makeBeatGrid(floor.chart.bpm, floor.chart.beatsPerBar);
   const mapping = floor.mapping ?? DEFAULT_MAPPING;
+  const chart = useMemo(() => generateChart(toChartSpec(floor), floor.seed), [floor]);
 
   const isBandLastFloor = floorIndex >= band.floors.length - 1;
   const isTowerTop = isBandLastFloor && bandIndex >= BANDS.length - 1;
@@ -121,7 +123,7 @@ export function App(): JSX.Element {
 
       {phase === 'playing' && audioRef.current && (
         <FloorPlayer
-          floor={floor}
+          chart={chart}
           grid={grid}
           mapping={mapping}
           audio={audioRef.current}

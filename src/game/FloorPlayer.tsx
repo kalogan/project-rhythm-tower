@@ -4,7 +4,6 @@ import {
   createFloorSession,
   DEFAULT_MAPPING,
   finalize,
-  generateChart,
   hpStateForVerdicts,
   isComplete,
   MAX_HP,
@@ -15,13 +14,13 @@ import {
   tick,
   type BeatGrid,
   type Button,
+  type Chart,
   type ColorMapping,
   type CueColor,
   type FloorScore,
   type FloorSession,
   type Verdict,
 } from '../core/index.js';
-import { toChartSpec, type Floor } from '../content/schemas.js';
 import type { AudioDriver } from './audio/audioDriver.js';
 import { createInput } from './input.js';
 import { TouchControls } from './TouchControls.js';
@@ -90,7 +89,7 @@ function useShowTouch(): boolean {
  * the core session — the view only draws its state.
  */
 export function FloorPlayer({
-  floor,
+  chart,
   grid,
   mapping,
   audio,
@@ -98,7 +97,8 @@ export function FloorPlayer({
   runPoints,
   onComplete,
 }: {
-  floor: Floor;
+  /** The deterministic chart to play (built by the caller from a floor or a boss). */
+  chart: Chart;
   grid: BeatGrid;
   mapping: ColorMapping;
   audio: AudioDriver;
@@ -126,7 +126,6 @@ export function FloorPlayer({
     const ctx2d = canvas.getContext('2d');
     if (!ctx2d) return;
 
-    const chart = generateChart(toChartSpec(floor), floor.seed);
     let session: FloorSession = createFloorSession(chart, grid, mapping);
     // The last moment any cue can still resolve — a HOLD resolves at its END beat
     // (start + holdBeats), which can land after the last cue's start beat, so fold
@@ -263,7 +262,7 @@ export function FloorPlayer({
       audio.stopAll();
       pressRef.current = null;
     };
-  }, [floor, grid, mapping, audio, onComplete]);
+  }, [chart, grid, mapping, audio, onComplete]);
 
   return (
     <>

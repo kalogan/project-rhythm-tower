@@ -78,12 +78,24 @@ export function atriumWraith(seed: number): Group {
     group.add(horn);
   }
 
-  // Glowing teal eyes (the cold accent against the warm body).
-  const eyeMat = emissiveMat(ATRIUM.teal, ATRIUM.teal, 2.6);
+  // A face that reads against the bright body: dark recessed sockets, glowing teal
+  // pupils that pop, and angled brows for a menacing scowl.
+  const darkMat = flatMat(ATRIUM.stone);
+  const eyeMat = emissiveMat(ATRIUM.teal, ATRIUM.teal, 3.4);
   for (const sx of [-1, 1]) {
-    const eye = new Mesh(new OctahedronGeometry(0.18, 0), eyeMat);
-    eye.position.set(sx * 0.42, 0.35, 1.25);
-    group.add(eye);
+    const socket = new Mesh(new BoxGeometry(0.46, 0.34, 0.16), darkMat);
+    socket.position.set(sx * 0.5, 0.42, 1.18);
+    group.add(socket);
+
+    const pupil = new Mesh(new OctahedronGeometry(0.17, 0), eyeMat);
+    pupil.position.set(sx * 0.5, 0.42, 1.34);
+    group.add(pupil);
+
+    // Angry brow: a dark bar angled down toward the centre.
+    const brow = new Mesh(new BoxGeometry(0.52, 0.13, 0.16), darkMat);
+    brow.position.set(sx * 0.5, 0.68, 1.22);
+    brow.rotation.z = -sx * 0.42;
+    group.add(brow);
   }
 
   return group;
