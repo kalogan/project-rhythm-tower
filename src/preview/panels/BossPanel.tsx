@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Canvas, useFrame } from '@react-three/fiber';
+import { Color, Group, Mesh, MeshStandardMaterial } from 'three';
 import {
   beatToTime,
   generateBossChart,
@@ -9,7 +11,10 @@ import {
   type BossSpec,
   type CueColor,
 } from '../../core/index.js';
+import { BANDS } from '../../content/packs.js';
+import { resolveArtKit, lookColors } from '../../game/resolveArtKit.js';
 import { createAudioDriver, type AudioDriver } from '../../game/audio/audioDriver.js';
+import { Orbit } from '../orbit.js';
 import { Btn, MONO, PANEL, Section, Slider } from '../ui.js';
 
 const CUE_HEX: Readonly<Record<CueColor, string>> = {
@@ -19,10 +24,8 @@ const CUE_HEX: Readonly<Record<CueColor, string>> = {
   yellow: '#eab308',
 };
 const COLORS: readonly CueColor[] = ['blue', 'green', 'red', 'yellow'];
-
 const PX_PER_SEC = 120;
 const PLAYHEAD = 0.28;
-
 const SELECT = {
   width: '100%',
   padding: 6,
@@ -33,8 +36,52 @@ const SELECT = {
   boxSizing: 'border-box' as const,
 };
 
+type TimeRef = { readonly current: number };
+
+/** The 3D boss: looms high during a barrage, lunges down + exposes its weak-spot glow
+ *  during a weak-spot window. Reads the shared playhead ref each frame. */
+function BossRig({ playTimeRef, boss, grid }: { playTimeRef: TimeRef; boss: BossChart; grid: ReturnType<typeof makeBeatGrid> }): JSX.Element {
+  const kit = resolveArtKit('atrium');
+  const creature = useMemo(() => (kit.boss ?? kit.landmark)(7001), [kit]);
+  const groupRef = useRef<Group>(null);
+  const spotRef = useRef<Mesh>(null);
+
+  useFrame((state, dt) => {
+    const t = state.clock.elapsedTime;
+    const phase = phaseAtBeat(boss, timeToBeat(grid, playTimeRef.current));
+    const exposed = phase?.kind === 'weakspot';
+    const targetY = exposed ? 1.1 : phase?.kind === 'barrage' ? 4.4 : 3;
+    const g = groupRef.current;
+    if (g) {
+      g.position.y += (targetY + Math.sin(t * 1.6) * 0.2 - g.position.y) * Math.min(1, dt * 4);
+      g.rotation.y += dt * (exposed ? 0.12 : 0.45);
+    }
+    const spot = spotRef.current;
+    if (spot) {
+      spot.visible = Boolean(exposed && phase?.color);
+      if (exposed && phase?.color) {
+        const mat = spot.material as MeshStandardMaterial;
+        const c = new Color(CUE_HEX[phase.color]);
+        mat.color.copy(c);
+        mat.emissive.copy(c);
+        spot.scale.setScalar(1 + Math.sin(t * 8) * 0.18);
+      }
+    }
+  });
+
+  return (
+    <group ref={groupRef} position={[0, 3, 0]}>
+      <primitive object={creature} />
+      <mesh ref={spotRef} position={[0, 0, 1.7]} visible={false}>
+        <sphereGeometry args={[0.5, 18, 18]} />
+        <meshStandardMaterial emissiveIntensity={2.4} />
+      </mesh>
+    </group>
+  );
+}
+
 export function BossPanel(): JSX.Element {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const timelineRef = useRef<HTMLCanvasElement>(null);
 
   const [bpm, setBpm] = useState(120);
   const [phases, setPhases] = useState(4);
@@ -46,28 +93,18 @@ export function BossPanel(): JSX.Element {
   const [seed, setSeed] = useState(4242);
 
   const spec: BossSpec = useMemo(
-    () => ({
-      bpm,
-      beatsPerBar: 4,
-      phases,
-      barrageBeats,
-      barrageDensity,
-      weakSpotBeats,
-      weakSpotColors: [weakA, weakB],
-      decoyColors: COLORS,
-      leadInBeats: 4,
-    }),
+    () => ({ bpm, beatsPerBar: 4, phases, barrageBeats, barrageDensity, weakSpotBeats, weakSpotColors: [weakA, weakB], decoyColors: COLORS, leadInBeats: 4 }),
     [bpm, phases, barrageBeats, barrageDensity, weakSpotBeats, weakA, weakB],
   );
-
   const boss = useMemo(() => generateBossChart(spec, seed), [spec, seed]);
   const grid = useMemo(() => makeBeatGrid(spec.bpm, spec.beatsPerBar), [spec.bpm, spec.beatsPerBar]);
   const endTime = useMemo(() => beatToTime(grid, boss.beats), [grid, boss.beats]);
+  const sky = lookColors(BANDS[0]!.look).sky;
 
   const decoyCount = boss.cues.filter((c) => c.kind === 'decoy').length;
   const strikeCount = boss.cues.filter((c) => c.kind === 'tap').length;
 
-  // ── Audio + playhead (driven by the audio clock, like the Charts panel). ──
+  // Audio + audio-clock-driven playhead (shared with the 3D rig via playTimeRef).
   const audioRef = useRef<AudioDriver | null>(null);
   const t0Ref = useRef(0);
   const activeRef = useRef(false);
@@ -79,7 +116,6 @@ export function BossPanel(): JSX.Element {
   const endRef = useRef(endTime);
   endRef.current = endTime;
 
-  // Silence + reset whenever the fight changes.
   useEffect(() => {
     audioRef.current?.stopAll();
     activeRef.current = false;
@@ -103,7 +139,6 @@ export function BossPanel(): JSX.Element {
     activeRef.current = true;
     setPlaying(true);
   }, [grid, boss]);
-
   const pause = useCallback(() => {
     audioRef.current?.stopAll();
     activeRef.current = false;
@@ -118,7 +153,7 @@ export function BossPanel(): JSX.Element {
   }, []);
 
   useEffect(() => {
-    const canvas = canvasRef.current;
+    const canvas = timelineRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
@@ -128,7 +163,6 @@ export function BossPanel(): JSX.Element {
     };
     resize();
     window.addEventListener('resize', resize);
-
     let raf = 0;
     const loop = (): void => {
       if (playingRef.current && activeRef.current && audioRef.current) {
@@ -144,7 +178,7 @@ export function BossPanel(): JSX.Element {
         playTimeRef.current = Math.max(0, t);
         setPlayTime(playTimeRef.current);
       }
-      drawBoss(ctx, canvas, boss, grid, playTimeRef.current);
+      drawTimeline(ctx, canvas, boss, grid, playTimeRef.current);
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
@@ -156,12 +190,28 @@ export function BossPanel(): JSX.Element {
 
   return (
     <>
-      <canvas ref={canvasRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', background: '#0a0710' }} />
+      {/* 3D boss view (top) */}
+      <div style={{ position: 'absolute', left: 0, right: 0, top: 0, height: '62%' }}>
+        <Canvas camera={{ position: [0, 3.4, 12], fov: 50 }} dpr={[1, 1.5]} onCreated={({ camera }) => camera.lookAt(0, 3, 0)}>
+          <color attach="background" args={[sky]} />
+          <fog attach="fog" args={[sky, 18, 60]} />
+          <ambientLight intensity={0.7} />
+          <directionalLight position={[6, 14, 6]} intensity={2} />
+          <BossRig playTimeRef={playTimeRef} boss={boss} grid={grid} />
+          <Orbit target={[0, 3, 0]} />
+        </Canvas>
+      </div>
+
+      {/* Phase timeline (bottom) */}
+      <canvas
+        ref={timelineRef}
+        style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: '38%', width: '100%', background: '#0a0710' }}
+      />
 
       <div style={PANEL}>
-        <div style={{ fontWeight: 700 }}>Boss · prototype</div>
+        <div style={{ fontWeight: 700 }}>Boss · Atrium reference</div>
         <div style={{ opacity: 0.6, fontSize: 11, marginTop: 2 }}>
-          dodge the barrage (decoys — don&apos;t press) → strike the weak spot. NOT yet in the game.
+          the Lantern awakened — dodge the barrage, strike the weak spot. NOT yet in the game.
         </div>
 
         <Section title="Fight">
@@ -195,16 +245,12 @@ export function BossPanel(): JSX.Element {
           <div style={{ display: 'flex', gap: 8 }}>
             <select value={weakA} onChange={(e) => setWeakA(e.target.value as CueColor)} style={SELECT}>
               {COLORS.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
+                <option key={c} value={c}>{c}</option>
               ))}
             </select>
             <select value={weakB} onChange={(e) => setWeakB(e.target.value as CueColor)} style={SELECT}>
               {COLORS.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
+                <option key={c} value={c}>{c}</option>
               ))}
             </select>
           </div>
@@ -228,37 +274,26 @@ const chip = {
   border: '1px solid rgba(255,255,255,0.1)',
 };
 
-function drawBoss(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, boss: BossChart, grid: ReturnType<typeof makeBeatGrid>, playTime: number): void {
+function drawTimeline(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, boss: BossChart, grid: ReturnType<typeof makeBeatGrid>, playTime: number): void {
   const w = canvas.width;
   const h = canvas.height;
   ctx.clearRect(0, 0, w, h);
-
   const playheadX = w * PLAYHEAD;
-  const laneY = h * 0.62;
+  const laneY = h * 0.5;
   const toX = (t: number): number => playheadX + (t - playTime) * PX_PER_SEC;
 
-  // Phase background bands (barrage = danger red; weak-spot = the exposed colour).
+  // Phase bands: barrage = danger red; weak-spot = the exposed colour.
   for (const p of boss.phases) {
     const x0 = toX(beatToTime(grid, p.startBeat));
     const x1 = toX(beatToTime(grid, p.endBeat));
     if (x1 < 0 || x0 > w) continue;
-    ctx.fillStyle = p.kind === 'barrage' ? 'rgba(239,68,68,0.10)' : `${CUE_HEX[p.color ?? 'green']}22`;
-    ctx.fillRect(x0, laneY - 70, x1 - x0, 140);
+    ctx.fillStyle = p.kind === 'barrage' ? 'rgba(239,68,68,0.12)' : `${CUE_HEX[p.color ?? 'green']}26`;
+    ctx.fillRect(x0, 0, x1 - x0, h);
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.font = '11px system-ui, sans-serif';
+    ctx.textAlign = 'left';
+    if (x0 > -40) ctx.fillText(p.kind === 'barrage' ? 'DODGE' : 'STRIKE', x0 + 4, 14);
   }
-
-  // The lane + playhead.
-  ctx.strokeStyle = 'rgba(255,255,255,0.12)';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(0, laneY);
-  ctx.lineTo(w, laneY);
-  ctx.stroke();
-  ctx.strokeStyle = '#ffd98a';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(playheadX, laneY - 80);
-  ctx.lineTo(playheadX, laneY + 80);
-  ctx.stroke();
 
   // Cues.
   for (const cue of boss.cues) {
@@ -268,65 +303,30 @@ function drawBoss(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, boss
       ctx.globalAlpha = 0.6;
       ctx.fillStyle = CUE_HEX[cue.color];
       ctx.beginPath();
-      ctx.arc(x, laneY, 13, 0, Math.PI * 2);
+      ctx.arc(x, laneY, 12, 0, Math.PI * 2);
       ctx.fill();
       ctx.globalAlpha = 1;
       ctx.strokeStyle = '#ef4444';
       ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.moveTo(x - 8, laneY - 8);
-      ctx.lineTo(x + 8, laneY + 8);
-      ctx.moveTo(x + 8, laneY - 8);
-      ctx.lineTo(x - 8, laneY + 8);
+      ctx.moveTo(x - 7, laneY - 7);
+      ctx.lineTo(x + 7, laneY + 7);
+      ctx.moveTo(x + 7, laneY - 7);
+      ctx.lineTo(x - 7, laneY + 7);
       ctx.stroke();
     } else {
       ctx.fillStyle = CUE_HEX[cue.color];
       ctx.beginPath();
-      ctx.arc(x, laneY, 22, 0, Math.PI * 2);
+      ctx.arc(x, laneY, 20, 0, Math.PI * 2);
       ctx.fill();
     }
   }
 
-  // The boss: a dark angular head up top that LUNGES down + exposes the weak-spot
-  // colour during a weak-spot phase, and rears up during a barrage.
-  const beatNow = timeToBeat(grid, playTime);
-  const phase = phaseAtBeat(boss, beatNow);
-  const exposed = phase?.kind === 'weakspot';
-  const bossY = exposed ? h * 0.34 : h * 0.2;
-  const bx = w * 0.5;
-  ctx.fillStyle = '#241828';
-  ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+  // Playhead.
+  ctx.strokeStyle = '#ffd98a';
   ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.moveTo(bx, bossY - 46);
-  ctx.lineTo(bx + 60, bossY);
-  ctx.lineTo(bx + 34, bossY + 52);
-  ctx.lineTo(bx - 34, bossY + 52);
-  ctx.lineTo(bx - 60, bossY);
-  ctx.closePath();
-  ctx.fill();
+  ctx.moveTo(playheadX, 0);
+  ctx.lineTo(playheadX, h);
   ctx.stroke();
-  // eyes
-  ctx.fillStyle = exposed ? '#ffd98a' : '#ef4444';
-  ctx.beginPath();
-  ctx.arc(bx - 20, bossY, 5, 0, Math.PI * 2);
-  ctx.arc(bx + 20, bossY, 5, 0, Math.PI * 2);
-  ctx.fill();
-  // weak spot
-  if (exposed && phase?.color) {
-    ctx.fillStyle = CUE_HEX[phase.color];
-    ctx.beginPath();
-    ctx.arc(bx, bossY + 24, 13, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = '#fff';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-  }
-
-  // Phase label.
-  ctx.fillStyle = '#e6ecff';
-  ctx.font = 'bold 16px system-ui, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText(exposed ? 'WEAK SPOT — strike!' : phase ? 'BARRAGE — dodge!' : '', bx, h * 0.5);
-  ctx.textAlign = 'left';
 }

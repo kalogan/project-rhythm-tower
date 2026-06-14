@@ -1,6 +1,6 @@
 import type { Object3D } from 'three';
 import type { BandLook } from '../content/schemas.js';
-import { atriumLantern, atriumPillar } from './atriumProps.js';
+import { atriumLantern, atriumPillar, atriumWraith } from './atriumProps.js';
 import { spireObelisk, spireShard } from './spireProps.js';
 import { verdantPod, verdantPlanter } from './verdantProps.js';
 import { summitBeacon, summitMonolith } from './summitProps.js';
@@ -16,9 +16,12 @@ export interface ArtKit {
   landmark: (seed: number) => Object3D;
   /** A scatter-field tile generator. */
   pillar: (seed: number) => Object3D;
+  /** The region's BOSS — the landmark awakened (centred for loom/lunge). Optional
+   * until each band ships its boss; the preview/game fall back to the landmark. */
+  boss?: (seed: number) => Object3D;
 }
 
-const ATRIUM_KIT: ArtKit = { landmark: atriumLantern, pillar: atriumPillar };
+const ATRIUM_KIT: ArtKit = { landmark: atriumLantern, pillar: atriumPillar, boss: atriumWraith };
 const SPIRE_KIT: ArtKit = { landmark: spireObelisk, pillar: spireShard };
 const VERDANT_KIT: ArtKit = { landmark: verdantPod, pillar: verdantPlanter };
 const SUMMIT_KIT: ArtKit = { landmark: summitBeacon, pillar: summitMonolith };
