@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { DEFAULT_MAPPING, makeBeatGrid, type FloorScore } from '../core/index.js';
 import { BANDS } from '../content/packs.js';
 import { TowerRenderer } from './TowerRenderer.js';
@@ -6,9 +6,11 @@ import { FloorPlayer } from './FloorPlayer.js';
 import { createAudioDriver, type AudioDriver } from './audio/audioDriver.js';
 import { loadLeaderboard, recordScore, type ScoreEntry } from './leaderboard.js';
 
-type Phase = 'menu' | 'playing' | 'result';
+type Phase = 'title' | 'transition' | 'playing' | 'result';
+type Mode = 'solo' | 'double';
 type RunEnd = null | 'complete' | 'over';
 const MAX_LIVES = 3;
+const TRANSITION_MS = 850;
 
 export function App(): JSX.Element {
   // Run state: where we are in the climb (band/floor), the accumulated RUN total, and
@@ -16,7 +18,8 @@ export function App(): JSX.Element {
   // life; out of lives ends the run and banks the full-run total to the global top-3.
   const [bandIndex, setBandIndex] = useState(0);
   const [floorIndex, setFloorIndex] = useState(0);
-  const [phase, setPhase] = useState<Phase>('menu');
+  const [phase, setPhase] = useState<Phase>('title');
+  const [mode, setMode] = useState<Mode>('solo');
   const [score, setScore] = useState<FloorScore | null>(null);
   const [board, setBoard] = useState<ScoreEntry[]>(() => loadLeaderboard());
   const [runPoints, setRunPoints] = useState(0);
@@ -42,12 +45,20 @@ export function App(): JSX.Element {
   const ctxRef = useRef({ isTowerTop, bandName: band.name, floorName: floor.name });
   ctxRef.current = { isTowerTop, bandName: band.name, floorName: floor.name };
 
+  // Enter a floor via a brief "Get ready" transition splash, then play.
   const startFloor = useCallback(async () => {
     if (!audioRef.current) audioRef.current = createAudioDriver();
     await audioRef.current.resume();
     setScore(null);
-    setPhase('playing');
+    setPhase('transition');
   }, []);
+
+  // The transition splash auto-advances into play.
+  useEffect(() => {
+    if (phase !== 'transition') return;
+    const id = window.setTimeout(() => setPhase('playing'), TRANSITION_MS);
+    return () => window.clearTimeout(id);
+  }, [phase]);
 
   // Resolve a finished floor synchronously: accumulate the run total, spend a life on a
   // death, and bank the run total when the run ends (topped out or out of lives).
@@ -99,6 +110,11 @@ export function App(): JSX.Element {
     void startFloor();
   }, [runEnd, score, isBandLastFloor, startRun, startFloor]);
 
+  const selectSolo = useCallback(() => {
+    setMode('solo');
+    void startRun();
+  }, [startRun]);
+
   return (
     <div style={{ position: 'absolute', inset: 0 }}>
       <TowerRenderer band={band} floorIndex={floorIndex} />
@@ -115,21 +131,38 @@ export function App(): JSX.Element {
         />
       )}
 
-      {phase === 'menu' && (
+      {phase === 'title' && (
         <Overlay>
-          <h1 style={{ margin: 0, fontSize: 40, color: '#ffd98a' }}>Rhythm Tower</h1>
-          <p style={{ maxWidth: 440, textAlign: 'center', lineHeight: 1.5 }}>
-            Climb the tower. A color flashes — decode it to its button and hit it on the beat.
-            <br />
-            <b>blue→X · green→A · red→B · yellow→Y</b>
-            <br />
-            Keys: <b>I J K L</b> (or a gamepad's face buttons).
-          </p>
-          <p style={{ opacity: 0.8, margin: 0 }}>
-            Survive each floor — your HP drains on misses, combos heal it. {MAX_LIVES} lives per run.
-          </p>
+          <h1 style={{ margin: 0, fontSize: 46, color: '#ffd98a', letterSpacing: 1 }}>Rhythm Tower</h1>
+          <p style={{ opacity: 0.85, margin: 0 }}>Decode the colour, hit the button on the beat, climb.</p>
+          <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', justifyContent: 'center', marginTop: 6 }}>
+            <ModeCard
+              title="Solo"
+              desc="Climb one tower. Colour → button on the beat. Survive each floor; combos heal your HP. (I J K L / gamepad)"
+              onClick={selectSolo}
+            />
+            <ModeCard
+              title="Double"
+              badge="Coming soon"
+              desc="Two towers, two D-pads, one brain — left + right lanes in a call-and-response duet. Shared HP."
+              disabled
+            />
+          </div>
           {board[0] && <p style={{ opacity: 0.7, margin: 0 }}>Best run: {board[0].points.toLocaleString()} pts</p>}
-          <Button onClick={startRun}>Start Run</Button>
+        </Overlay>
+      )}
+
+      {phase === 'transition' && (
+        <Overlay>
+          <div style={{ textAlign: 'center', animation: 'riseIn 0.5s ease' }}>
+            <div style={{ opacity: 0.7, letterSpacing: 3, fontSize: 13 }}>
+              {mode === 'double' ? 'DOUBLE' : 'SOLO'} · {band.name}
+            </div>
+            <h2 style={{ fontSize: 38, color: '#ffd98a', margin: '10px 0 4px' }}>
+              Floor {floorIndex + 1}: {floor.name}
+            </h2>
+            <div style={{ opacity: 0.6 }}>Get ready…</div>
+          </div>
         </Overlay>
       )}
 
@@ -197,6 +230,47 @@ function Leaderboard({ board, youAt }: { board: ScoreEntry[]; youAt: number }): 
         );
       })}
     </div>
+  );
+}
+
+function ModeCard({
+  title,
+  desc,
+  onClick,
+  badge,
+  disabled,
+}: {
+  title: string;
+  desc: string;
+  onClick?: () => void;
+  badge?: string;
+  disabled?: boolean;
+}): JSX.Element {
+  return (
+    <button
+      disabled={disabled}
+      onClick={onClick}
+      style={{
+        width: 230,
+        padding: 18,
+        textAlign: 'left',
+        borderRadius: 14,
+        border: '1px solid rgba(255,255,255,0.14)',
+        background: disabled ? 'rgba(255,255,255,0.04)' : 'rgba(59,91,219,0.20)',
+        color: '#f4f1e8',
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        opacity: disabled ? 0.6 : 1,
+        fontFamily: 'system-ui, sans-serif',
+      }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span style={{ fontSize: 24, fontWeight: 800 }}>{title}</span>
+        {badge && (
+          <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 999, background: '#3b5bdb' }}>{badge}</span>
+        )}
+      </div>
+      <p style={{ opacity: 0.82, fontSize: 13, margin: '10px 0 0', lineHeight: 1.45 }}>{desc}</p>
+    </button>
   );
 }
 

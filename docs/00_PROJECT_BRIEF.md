@@ -60,6 +60,14 @@ plumbing), atmosphere/bloom, real fighter art (placeholder atlas). Don't rebuild
   backend; level editor; story/narrative; monetization. (The richer cue kinds are *later*,
   not *never*.)
 
+**Roadmap — Double mode** (start-screen stub shipped; gameplay phased, not yet built):
+one player controls **two lanes via two 4-direction D-pads** (mobile: on-screen L/R d-pads;
+desktop: WASD + arrow keys — left d-pad = left lane, right d-pad = right lane). **Shared HP
+pool** across both lanes. Charts start as **call-and-response duets** (the two lanes form a
+musical back-and-forth), scaling to **independent charts** later. Single-player only (no
+online co-op). Phases: P1 two-lane core · P2 shared-HP/lives + combined run total to a
+separate Double leaderboard · P3 polish (two fighters, two thumb clusters, shared music bed).
+
 ## 6. Tech spine (locked)
 Single-package browser app. **The deterministic core is the source of truth; audio and
 render are projections of it.**
