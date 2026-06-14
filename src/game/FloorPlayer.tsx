@@ -98,6 +98,7 @@ export function FloorPlayer({
   lives,
   runPoints,
   onComplete,
+  onHit,
 }: {
   /** The deterministic chart to play (built by the caller from a floor or a boss). */
   chart: Chart;
@@ -111,6 +112,8 @@ export function FloorPlayer({
   /** Points banked earlier this run (the HUD score = runPoints + this floor's live points). */
   runPoints: number;
   onComplete: (score: FloorScore) => void;
+  /** Fires on each press that resolves a cue (e.g. so a boss can flinch on weak-spot hits). */
+  onHit?: ((verdict: Verdict) => void) | undefined;
 }): JSX.Element {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const pressRef = useRef<((button: Button) => void) | null>(null);
@@ -154,7 +157,10 @@ export function FloorPlayer({
       session = res.session;
       animator.play(attackClipFor(button), t); // the character always swings on input
       fx.slash(BUTTON_HEX[button], t); // blade trail tinted with the pressed button
-      if (res.verdict) flash = { verdict: res.verdict, at: t };
+      if (res.verdict) {
+        flash = { verdict: res.verdict, at: t };
+        onHit?.(res.verdict); // let a boss flinch on the strike
+      }
 
       const sp = strikePoint(canvas);
       if (res.verdict === 'perfect' && res.cueId !== null) {

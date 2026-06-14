@@ -10,6 +10,7 @@ import {
   type BossSpec,
   type Chart,
   type FloorScore,
+  type Verdict,
 } from '../../core/index.js';
 import { BANDS } from '../../content/packs.js';
 import { toChartSpec } from '../../content/schemas.js';
@@ -33,6 +34,15 @@ const STOPS: Stop[] = BANDS.flatMap((b, bi) => [
   ...b.floors.map((f, fi) => ({ bandIdx: bi, floorIdx: fi, boss: false, label: `${b.name} · ${f.name}` })),
   { bandIdx: bi, floorIdx: b.floors.length - 1, boss: true, label: `${b.name} · ★ BOSS` },
 ]);
+
+/** A short defeat line per region (prototype — moves to pack data when wired to the game). */
+const BOSS_LINES: Readonly<Record<string, string>> = {
+  'pack:atrium': "The Lantern's light goes out.",
+  'pack:spire': 'The Beacon dims and topples.',
+  'pack:verdant': 'The Lumen Pod wilts and falls away.',
+  'pack:summit': 'The Stormcrown is cast from the peak.',
+  'pack:belfry': 'The Great Bell tolls once, and drops.',
+};
 
 function bossSpec(bpm: number): BossSpec {
   return {
@@ -83,34 +93,55 @@ export function PlayPanel(): JSX.Element {
     };
   }, [stop, floor]);
 
-  // The 3D boss creature (the region's landmark awakened) + a phase read synced to the
-  // gameplay clock, so the actor looms/lunges in time with the barrage/weak-spot windows.
+  // The 3D boss creature (the region's landmark awakened) + a state read synced to the
+  // gameplay clock: phase (loom/swoop), cumulative damage (trembles), the last-hit time
+  // (flinch), and the defeat time (plummet off the tower).
   const bossObject = useMemo(
     () => (stop.boss ? (resolveArtKit(band.artKitId).boss ?? resolveArtKit(band.artKitId).landmark)(7001) : null),
     [stop.boss, band.artKitId],
   );
   const bossT0Ref = useRef(0);
+  const strikesRef = useRef(0);
+  const hitTimeRef = useRef(-100);
+  const defeatTimeRef = useRef(-1);
   const LEAD_SEC = 2.0; // matches FloorPlayer's lead-in so the actor and cues align
+  const totalStrikes = bossFull ? bossFull.cues.filter((c) => c.kind === 'tap').length : 0;
+
+  // The current stop in a ref so the (stable) onComplete callback can read it.
+  const stopRef = useRef(stop);
+  stopRef.current = stop;
+
   const bossPresence: BossPresence | undefined =
     stop.boss && bossObject
       ? {
           object: bossObject,
-          getPhase: () => {
-            if (!bossFull || !audioRef.current) return undefined;
-            const ft = audioRef.current.now() - bossT0Ref.current;
-            const ph = phaseAtBeat(bossFull, timeToBeat(grid, ft));
-            if (!ph) return undefined;
-            return ph.color !== undefined ? { kind: ph.kind, color: ph.color } : { kind: ph.kind };
+          getState: () => {
+            const now = audioRef.current?.now() ?? 0;
+            const ph = bossFull ? phaseAtBeat(bossFull, timeToBeat(grid, now - bossT0Ref.current)) : undefined;
+            const phase = ph ? (ph.color !== undefined ? { kind: ph.kind, color: ph.color } : { kind: ph.kind }) : undefined;
+            return {
+              phase,
+              damage: totalStrikes > 0 ? Math.min(1, strikesRef.current / totalStrikes) : 0,
+              hitT: now - hitTimeRef.current,
+              defeatT: defeatTimeRef.current < 0 ? -1 : now - defeatTimeRef.current,
+            };
           },
         }
       : undefined;
 
   useEffect(() => () => audioRef.current?.stopAll(), []);
 
+  const resetBoss = (): void => {
+    strikesRef.current = 0;
+    hitTimeRef.current = -100;
+    defeatTimeRef.current = -1;
+  };
+
   const start = useCallback(async () => {
     if (!audioRef.current) audioRef.current = createAudioDriver();
     await audioRef.current.resume();
     bossT0Ref.current = audioRef.current.now() + LEAD_SEC;
+    resetBoss();
     setScore(null);
     setRunKey((k) => k + 1);
     setPlaying(true);
@@ -118,14 +149,24 @@ export function PlayPanel(): JSX.Element {
 
   const select = useCallback((idx: number) => {
     audioRef.current?.stopAll();
+    resetBoss();
     setStopIdx(Math.max(0, Math.min(STOPS.length - 1, idx)));
     setScore(null);
     setPlaying(false);
   }, []);
 
+  const onHit = useCallback((verdict: Verdict) => {
+    if (verdict === 'perfect' || verdict === 'good') {
+      strikesRef.current += 1;
+      hitTimeRef.current = audioRef.current?.now() ?? 0;
+    }
+  }, []);
+
   const onComplete = useCallback((s: FloorScore) => {
     setScore(s);
     setPlaying(false);
+    // A cleared boss is DEFEATED — start its plummet off the tower.
+    if (s.cleared && stopRef.current.boss) defeatTimeRef.current = audioRef.current?.now() ?? 0;
   }, []);
 
   return (
@@ -143,6 +184,7 @@ export function PlayPanel(): JSX.Element {
           lives={3}
           runPoints={0}
           onComplete={onComplete}
+          onHit={onHit}
         />
       )}
 
@@ -190,9 +232,12 @@ export function PlayPanel(): JSX.Element {
           <div style={{ textAlign: 'center', color: '#e6ecff' }}>
             {score ? (
               <>
-                <div style={{ fontSize: 28, fontWeight: 800, color: score.cleared ? '#a3e635' : '#ef4444' }}>
-                  {score.cleared ? 'Cleared' : 'Down'}
+                <div style={{ fontSize: 30, fontWeight: 800, color: score.cleared ? '#a3e635' : '#ef4444' }}>
+                  {stop.boss && score.cleared ? 'DEFEATED' : score.cleared ? 'Cleared' : 'Down'}
                 </div>
+                {stop.boss && score.cleared && (
+                  <div style={{ fontStyle: 'italic', opacity: 0.85, marginTop: 6 }}>{BOSS_LINES[band.id] ?? ''}</div>
+                )}
                 <div style={{ ...MONO, opacity: 0.85, marginTop: 6 }}>
                   {score.points.toLocaleString()} pts · {(score.accuracy * 100).toFixed(0)}% · HP {Math.round(score.hp)}
                 </div>

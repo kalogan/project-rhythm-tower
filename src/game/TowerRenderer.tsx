@@ -4,12 +4,12 @@ import type { Object3D, PerspectiveCamera } from 'three';
 import type { BandPack } from '../content/schemas.js';
 import { resolveArtKit, lookColors } from './resolveArtKit.js';
 import { buildTowerScene } from './towerScene.js';
-import { BossActor, type BossPhaseLite } from './BossActor.js';
+import { BossActor, type BossActorState } from './BossActor.js';
 
 /** Optional boss looming in the backdrop (the region's landmark awakened). */
 export interface BossPresence {
   readonly object: Object3D;
-  readonly getPhase: () => BossPhaseLite | undefined;
+  readonly getState: () => BossActorState;
 }
 
 /**
@@ -75,7 +75,7 @@ export function TowerRenderer({
       <ambientLight intensity={0.85} />
       <directionalLight position={[6, 18, 8]} intensity={2.2} />
       <TowerRig band={band} floorIndex={floorIndex} />
-      {boss && <BossActor object={boss.object} getPhase={boss.getPhase} />}
+      {boss && <BossActor object={boss.object} getState={boss.getState} />}
     </Canvas>
   );
 }
