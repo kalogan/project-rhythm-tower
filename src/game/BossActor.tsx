@@ -32,15 +32,20 @@ export function BossActor({ object, getPhase }: { object: Object3D; getPhase: ()
     const t = state.clock.elapsedTime;
     const phase = getPhase();
     const exposed = phase?.kind === 'weakspot';
-    const targetY = exposed ? 5.5 : phase?.kind === 'barrage' ? 10 : 8;
-    const d = Math.min(1, dt * 3.2);
+    // Barrage / idle: HIGH + FAR (looming at the top, throwing decoys down, small).
+    // Weak-spot: SWOOP IN — drop down, rush toward the camera/player, grow + lean in.
+    const ty = exposed ? 6.5 : 12;
+    const tz = exposed ? 2 : -6;
+    const ts = exposed ? 1.15 : 0.78;
+    const d = Math.min(1, dt * 3);
     const g = groupRef.current;
     if (g) {
-      g.position.y += (targetY + Math.sin(t * 1.6) * 0.25 - g.position.y) * d;
-      // Face the player with a menacing sway — never a full spin. Lean in when it lunges.
-      g.rotation.y = Math.sin(t * 0.6) * 0.22;
-      const targetLean = exposed ? 0.26 : 0;
-      g.rotation.x += (targetLean - g.rotation.x) * d;
+      g.position.y += (ty + Math.sin(t * 1.6) * 0.2 - g.position.y) * d;
+      g.position.z += (tz - g.position.z) * d;
+      const s = g.scale.x + (ts - g.scale.x) * d;
+      g.scale.setScalar(s);
+      g.rotation.y = Math.sin(t * 0.6) * 0.18; // gentle sway, faces the player
+      g.rotation.x += ((exposed ? 0.32 : 0) - g.rotation.x) * d; // lean in on the swoop
     }
     const spot = spotRef.current;
     if (spot) {
@@ -56,7 +61,7 @@ export function BossActor({ object, getPhase }: { object: Object3D; getPhase: ()
   });
 
   return (
-    <group ref={groupRef} position={[0, 8, -1]} scale={1.4}>
+    <group ref={groupRef} position={[0, 12, -6]} scale={0.78}>
       <primitive object={object} />
       <mesh ref={spotRef} position={[0, 0, 1.8]} visible={false}>
         <sphereGeometry args={[0.55, 18, 18]} />
