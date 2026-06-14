@@ -5,7 +5,9 @@ import {
   DEFAULT_MAPPING,
   finalize,
   generateChart,
+  hpStateForVerdicts,
   isComplete,
+  MAX_HP,
   pointsForVerdicts,
   pressButton,
   releaseButton,
@@ -92,22 +94,31 @@ export function FloorPlayer({
   grid,
   mapping,
   audio,
+  lives,
+  runPoints,
   onComplete,
 }: {
   floor: Floor;
   grid: BeatGrid;
   mapping: ColorMapping;
   audio: AudioDriver;
+  /** Run-lives remaining (drawn as hearts). */
+  lives: number;
+  /** Points banked earlier this run (the HUD score = runPoints + this floor's live points). */
+  runPoints: number;
   onComplete: (score: FloorScore) => void;
 }): JSX.Element {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const pressRef = useRef<((button: Button) => void) | null>(null);
   const showTouch = useShowTouch();
-  // The draw loop reads this each frame to decide the mapping legend: when there are
-  // NO thumb buttons (desktop), the legend must always show since nothing else teaches
-  // the colour->button map. Kept in a ref so a resize doesn't restart the floor.
+  // The draw loop reads these each frame: the legend (no thumb buttons => always show),
+  // and the run lives/points for the HUD. Refs so a resize never restarts the floor.
   const showTouchRef = useRef(showTouch);
   showTouchRef.current = showTouch;
+  const livesRef = useRef(lives);
+  livesRef.current = lives;
+  const runPointsRef = useRef(runPoints);
+  runPointsRef.current = runPoints;
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -223,13 +234,22 @@ export function FloorPlayer({
 
       fx.decay(dt);
       shatter.update(dt);
-      // No thumb buttons (desktop) => always show the legend (nothing else teaches it).
-      draw(ctx2d, canvas, session, chart.cues, grid, mapping, now, flash, animator, shatter, fx, !showTouchRef.current);
 
-      if (!done && (isComplete(session) || now > lastCueTime + 1.4)) {
+      // Live HP from the resolved verdicts. Hitting 0 is a DEATH — the floor ends now,
+      // even mid-chart (the score will report died=true / cleared=false).
+      const hp = hpStateForVerdicts(session.verdicts).hp;
+
+      // No thumb buttons (desktop) => always show the legend (nothing else teaches it).
+      draw(
+        ctx2d, canvas, session, chart.cues, grid, mapping, now, flash, animator, shatter, fx,
+        !showTouchRef.current, hp, livesRef.current, runPointsRef.current,
+      );
+
+      const survivedToEnd = isComplete(session) || now > lastCueTime + 1.4;
+      if (!done && (hp <= 0 || survivedToEnd)) {
         done = true;
-        session = tick(session, lastCueTime + 100); // resolve any stragglers
-        onComplete(finalize(session, floor.clearThreshold));
+        if (survivedToEnd) session = tick(session, lastCueTime + 100); // resolve stragglers
+        onComplete(finalize(session));
         return;
       }
       raf = requestAnimationFrame(loop);
@@ -288,6 +308,9 @@ function draw(
   shatter: ShatterField,
   fx: Fx,
   alwaysShowLegend: boolean,
+  hp: number,
+  lives: number,
+  runPoints: number,
 ): void {
   const w = canvas.width;
   const h = canvas.height;
@@ -438,17 +461,35 @@ function draw(
     });
   }
 
-  // Score, big at the top centre.
-  const points = pointsForVerdicts(session.verdicts);
+  // Score (RUN total = banked + this floor's live points), big at the top centre.
+  const points = runPoints + pointsForVerdicts(session.verdicts);
   ctx.textAlign = 'center';
   ctx.fillStyle = '#ffd98a';
   ctx.font = 'bold 36px system-ui, sans-serif';
   ctx.fillText(points.toLocaleString(), w / 2, 50);
 
+  // HP bar (survive = clear): a centred gauge under the score, green->red as it drops.
+  const frac = Math.max(0, Math.min(1, hp / MAX_HP));
+  const barW = Math.min(360, w * 0.5);
+  const barX = w / 2 - barW / 2;
+  const barY = 64;
+  ctx.fillStyle = 'rgba(255,255,255,0.14)';
+  ctx.fillRect(barX, barY, barW, 12);
+  const hue = 120 * frac; // 120=green -> 0=red
+  ctx.fillStyle = `hsl(${hue}, 80%, 50%)`;
+  ctx.fillRect(barX, barY, barW * frac, 12);
+  ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(barX, barY, barW, 12);
+
+  // Lives (hearts) just right of the HP bar.
+  ctx.font = '18px system-ui, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText('♥'.repeat(Math.max(0, lives)), barX + barW + 10, barY + 12);
+
   // HUD: combo + progress (top-left).
   let resolved = 0;
   for (const v of session.verdicts) if (v !== null) resolved++;
-  ctx.textAlign = 'left';
   ctx.fillStyle = '#fff';
   ctx.font = 'bold 22px system-ui, sans-serif';
   ctx.fillText(`Combo ${session.combo}`, 24, 44);

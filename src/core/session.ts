@@ -284,6 +284,6 @@ export function isComplete(session: FloorSession): boolean {
   return session.verdicts.every((v) => v !== null);
 }
 
-export function finalize(session: FloorSession, clearThreshold?: number): FloorScore {
-  return scoreFloor(session.verdicts, session.maxCombo, clearThreshold);
+export function finalize(session: FloorSession): FloorScore {
+  return scoreFloor(session.verdicts, session.maxCombo);
 }

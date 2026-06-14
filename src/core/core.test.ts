@@ -4,7 +4,7 @@ import { DEFAULT_MAPPING, expectedButtons, type Cue, type ColorMapping } from '.
 import { makeBeatGrid, beatToTime, timeToBeat, secPerBeat } from './beatGrid.js';
 import { generateChart, MIN_CUE_GAP_SEC, MIN_CUE_GAP_FLOOR_SEC, type ChartSpec } from './chart.js';
 import { DEFAULT_WINDOWS, timingVerdict } from './judgment.js';
-import { pointsForVerdicts, scoreFloor } from './scoring.js';
+import { MAX_HP, hpStateForVerdicts, pointsForVerdicts, scoreFloor } from './scoring.js';
 import { createFloorSession, pressButton, releaseButton, tick, finalize, isComplete } from './session.js';
 
 const BAND1_SPEC: ChartSpec = {
@@ -136,6 +136,47 @@ describe('points', () => {
   it('is surfaced on FloorScore.points (same as pointsForVerdicts)', () => {
     const verdicts = ['perfect', 'good', 'miss', 'perfect'] as const;
     expect(scoreFloor([...verdicts], 2).points).toBe(pointsForVerdicts([...verdicts]));
+  });
+});
+
+describe('HP gauge (survive = clear)', () => {
+  it('starts full and never drains on a clean run', () => {
+    const s = hpStateForVerdicts(['perfect', 'perfect', 'good', 'avoided']);
+    expect(s.hp).toBe(MAX_HP);
+    expect(s.died).toBe(false);
+  });
+
+  it('drains on misses and wrongs, wrongs hurting more', () => {
+    expect(hpStateForVerdicts(['miss']).hp).toBe(MAX_HP - 16);
+    expect(hpStateForVerdicts(['wrong']).hp).toBe(MAX_HP - 20);
+  });
+
+  it('dies (hp 0) once enough mistakes stack up with no healing', () => {
+    // 5 wrongs = -100 -> dead.
+    const s = hpStateForVerdicts(['wrong', 'wrong', 'wrong', 'wrong', 'wrong']);
+    expect(s.died).toBe(true);
+    expect(s.hp).toBe(0);
+  });
+
+  it('lets combos heal you back up (never above MAX)', () => {
+    // a miss then a long perfect streak — HP recovers but caps at MAX.
+    const s = hpStateForVerdicts(['miss', ...Array(20).fill('perfect')]);
+    expect(s.died).toBe(false);
+    expect(s.hp).toBe(MAX_HP);
+  });
+
+  it('clears a floor by SURVIVING (a few misses still pass)', () => {
+    const score = scoreFloor(['perfect', 'miss', 'good', 'miss', 'perfect'], 2);
+    expect(score.died).toBe(false);
+    expect(score.cleared).toBe(true); // survived despite 2 misses
+    expect(score.hp).toBeGreaterThan(0);
+  });
+
+  it('fails a floor on death regardless of accuracy', () => {
+    const score = scoreFloor(['wrong', 'wrong', 'wrong', 'wrong', 'wrong', 'perfect'], 1);
+    expect(score.died).toBe(true);
+    expect(score.cleared).toBe(false);
+    expect(score.hp).toBe(0);
   });
 });
 

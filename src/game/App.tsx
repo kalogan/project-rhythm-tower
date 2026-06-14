@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { DEFAULT_MAPPING, makeBeatGrid, type FloorScore } from '../core/index.js';
 import { BANDS } from '../content/packs.js';
 import { TowerRenderer } from './TowerRenderer.js';
@@ -7,16 +7,22 @@ import { createAudioDriver, type AudioDriver } from './audio/audioDriver.js';
 import { loadLeaderboard, recordScore, type ScoreEntry } from './leaderboard.js';
 
 type Phase = 'menu' | 'playing' | 'result';
+type RunEnd = null | 'complete' | 'over';
+const MAX_LIVES = 3;
 
 export function App(): JSX.Element {
-  // Track WHERE in the climb we are: which band (by climb order) + which floor.
-  // The tower is the ordered list of BANDS; clearing a band's last floor advances
-  // to the next band's first floor (cozy: we only ever advance on `cleared`).
+  // Run state: where we are in the climb (band/floor), the accumulated RUN total, and
+  // the run-lives. A floor is cleared by SURVIVING it (HP > 0). On death you spend a
+  // life; out of lives ends the run and banks the full-run total to the global top-3.
   const [bandIndex, setBandIndex] = useState(0);
   const [floorIndex, setFloorIndex] = useState(0);
   const [phase, setPhase] = useState<Phase>('menu');
   const [score, setScore] = useState<FloorScore | null>(null);
   const [board, setBoard] = useState<ScoreEntry[]>(() => loadLeaderboard());
+  const [runPoints, setRunPoints] = useState(0);
+  const [lives, setLives] = useState(MAX_LIVES);
+  const [runEnd, setRunEnd] = useState<RunEnd>(null);
+  const [resultTotal, setResultTotal] = useState(0);
   const audioRef = useRef<AudioDriver | null>(null);
 
   const band = BANDS[bandIndex]!;
@@ -24,24 +30,17 @@ export function App(): JSX.Element {
   const grid = makeBeatGrid(floor.chart.bpm, floor.chart.beatsPerBar);
   const mapping = floor.mapping ?? DEFAULT_MAPPING;
 
-  // When a floor finishes, record its score to the persistent top-3 leaderboard once.
-  useEffect(() => {
-    if (phase !== 'result' || !score) return;
-    setBoard(
-      recordScore({
-        points: score.points,
-        floorName: `${band.name} · ${floor.name}`,
-        accuracy: score.accuracy,
-        cleared: score.cleared,
-        at: Date.now(),
-      }),
-    );
-  }, [phase, score, band.name, floor.name]);
-
-  // Is there anywhere left to climb after this floor?
   const isBandLastFloor = floorIndex >= band.floors.length - 1;
   const isTowerTop = isBandLastFloor && bandIndex >= BANDS.length - 1;
-  const canAdvance = Boolean(score?.cleared) && !isTowerTop;
+
+  // Mirror run state into refs so the (stable) onComplete callback resolves a floor with
+  // no stale closures — and without changing identity (which would restart the floor).
+  const runPointsRef = useRef(0);
+  runPointsRef.current = runPoints;
+  const livesRef = useRef(MAX_LIVES);
+  livesRef.current = lives;
+  const ctxRef = useRef({ isTowerTop, bandName: band.name, floorName: floor.name });
+  ctxRef.current = { isTowerTop, bandName: band.name, floorName: floor.name };
 
   const startFloor = useCallback(async () => {
     if (!audioRef.current) audioRef.current = createAudioDriver();
@@ -50,31 +49,70 @@ export function App(): JSX.Element {
     setPhase('playing');
   }, []);
 
+  // Resolve a finished floor synchronously: accumulate the run total, spend a life on a
+  // death, and bank the run total when the run ends (topped out or out of lives).
   const onComplete = useCallback((s: FloorScore) => {
+    const { isTowerTop: top, bandName, floorName } = ctxRef.current;
+    const total = runPointsRef.current + s.points;
+    setResultTotal(total);
+    if (s.cleared) {
+      setRunPoints(total);
+      if (top) {
+        setBoard(recordScore({ points: total, floorName: `Topped out — ${bandName}`, accuracy: s.accuracy, cleared: true, at: Date.now() }));
+        setRunEnd('complete');
+      }
+    } else {
+      const remaining = livesRef.current - 1;
+      setLives(remaining);
+      if (remaining <= 0) {
+        setBoard(recordScore({ points: total, floorName: `Reached ${bandName} · ${floorName}`, accuracy: s.accuracy, cleared: false, at: Date.now() }));
+        setRunEnd('over');
+      }
+    }
     setScore(s);
     setPhase('result');
   }, []);
 
+  const startRun = useCallback(() => {
+    setBandIndex(0);
+    setFloorIndex(0);
+    setRunPoints(0);
+    setLives(MAX_LIVES);
+    setRunEnd(null);
+    void startFloor();
+  }, [startFloor]);
+
   const advance = useCallback(() => {
-    // Only climb on a clear; otherwise this is a Retry (same floor).
-    if (score?.cleared && !isTowerTop) {
+    if (runEnd) {
+      startRun(); // run ended — start a fresh climb
+      return;
+    }
+    if (score?.cleared) {
       if (isBandLastFloor) {
-        // Cleared the band's crown — ascend to the next band's first floor.
         setBandIndex((b) => b + 1);
         setFloorIndex(0);
       } else {
         setFloorIndex((i) => i + 1);
       }
     }
+    // died with lives left -> retry the same floor (board + run total persist).
     void startFloor();
-  }, [score, isBandLastFloor, isTowerTop, startFloor]);
+  }, [runEnd, score, isBandLastFloor, startRun, startFloor]);
 
   return (
     <div style={{ position: 'absolute', inset: 0 }}>
       <TowerRenderer band={band} floorIndex={floorIndex} />
 
       {phase === 'playing' && audioRef.current && (
-        <FloorPlayer floor={floor} grid={grid} mapping={mapping} audio={audioRef.current} onComplete={onComplete} />
+        <FloorPlayer
+          floor={floor}
+          grid={grid}
+          mapping={mapping}
+          audio={audioRef.current}
+          lives={lives}
+          runPoints={runPoints}
+          onComplete={onComplete}
+        />
       )}
 
       {phase === 'menu' && (
@@ -87,31 +125,37 @@ export function App(): JSX.Element {
             <br />
             Keys: <b>I J K L</b> (or a gamepad's face buttons).
           </p>
-          <p style={{ opacity: 0.8 }}>
-            {band.name} · Floor {floorIndex + 1}: {floor.name}
+          <p style={{ opacity: 0.8, margin: 0 }}>
+            Survive each floor — your HP drains on misses, combos heal it. {MAX_LIVES} lives per run.
           </p>
-          {board[0] && <p style={{ opacity: 0.7, margin: 0 }}>Best: {board[0].points.toLocaleString()} pts</p>}
-          <Button onClick={startFloor}>Start</Button>
+          {board[0] && <p style={{ opacity: 0.7, margin: 0 }}>Best run: {board[0].points.toLocaleString()} pts</p>}
+          <Button onClick={startRun}>Start Run</Button>
         </Overlay>
       )}
 
       {phase === 'result' && score && (
         <Overlay>
-          <h2 style={{ margin: 0, color: score.cleared ? '#a3e635' : '#ef4444' }}>
-            {score.cleared ? 'Floor Cleared!' : 'Try Again'}
+          <h2
+            style={{
+              margin: 0,
+              color: runEnd === 'complete' ? '#ffd98a' : runEnd === 'over' ? '#ef4444' : score.cleared ? '#a3e635' : '#ef4444',
+            }}
+          >
+            {runEnd === 'complete' ? 'Tower Topped! 🎉' : runEnd === 'over' ? 'Run Over' : score.cleared ? 'Floor Cleared!' : 'You Fell!'}
           </h2>
           <p style={{ fontSize: 34, fontWeight: 800, color: '#ffd98a', margin: 0 }}>
-            {score.points.toLocaleString()} pts
+            {resultTotal.toLocaleString()} pts
           </p>
-          <p style={{ fontSize: 18, margin: 0 }}>
-            Accuracy {(score.accuracy * 100).toFixed(0)}% · Max combo {score.maxCombo}
+          <p style={{ fontSize: 13, opacity: 0.7, margin: 0 }}>run total{runEnd ? ' · banked' : ''}</p>
+          <p style={{ fontSize: 16, margin: 0 }}>
+            This floor {score.points.toLocaleString()} · {(score.accuracy * 100).toFixed(0)}% acc · combo {score.maxCombo}
           </p>
-          <p style={{ opacity: 0.85, margin: 0 }}>
-            {score.perfect} perfect · {score.good} good · {score.wrong} wrong · {score.miss} miss
+          <p style={{ margin: 0, opacity: 0.9 }}>
+            {runEnd === 'over' ? 'Out of lives' : `Lives ${'♥'.repeat(Math.max(0, lives))}`}
           </p>
-          <Leaderboard board={board} youAt={score.points} />
+          {runEnd && <Leaderboard board={board} youAt={resultTotal} />}
           <Button onClick={advance}>
-            {canAdvance ? (isBandLastFloor ? 'Next Band' : 'Next Floor') : 'Retry'}
+            {runEnd ? 'New Run' : score.cleared ? (isBandLastFloor ? 'Next Band' : 'Next Floor') : `Retry (${'♥'.repeat(Math.max(0, lives))})`}
           </Button>
         </Overlay>
       )}

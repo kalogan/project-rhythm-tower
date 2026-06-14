@@ -19,9 +19,13 @@ Canopy (decoys + doubles; doubles need BOTH buttons) → Stormcrown Summit (temp
 BPM, guarded by a minimum cue-spacing so windows never overlap) → Moonlit Belfry (HOLD cues:
 press on the start beat, hold through, early-release breaks). A swordfighter at the hit point
 swings per-button attacks + shatters cues, with flash/shake/slash juice. The tower wall renders
-as InstancedMesh (1–2 draw calls). **Not built yet — don't assume:** atmosphere/bloom, real
-fighter art (placeholder atlas), touch-release for holds (keyboard/gamepad only). **Don't
-rebuild the core.** See brief §4.
+as InstancedMesh (1–2 draw calls). **Run model:** per-floor HP bar (drains on miss/wrong, combos
+heal) — survive = clear (replaces the accuracy gate); HP 0 = death, costing 1 of 3 run-lives; out
+of lives banks the full-run total to a localStorage top-3. A live score sits atop the HUD. A
+**content-preview tool** ships as a separate deployed entry (`/preview.html`): Themes/backdrops,
+Props turntables, Cue & FX lab, Chart timeline — all with knobs + JSON export. **Not built yet —
+don't assume:** atmosphere/bloom, real fighter art (placeholder atlas), touch-release for holds,
+per-floor tints / more bands (the theme-expansion work). **Don't rebuild the core.** See brief §4.
 
 **Shared-file footgun:** the files multiple builders tend to touch — the routing seam
 (`src/game/resolveArtKit.ts` once it exists), the content registries (`src/content/registries/*`),
