@@ -454,19 +454,35 @@ function draw(
   // on touch devices with the default map, where the tinted thumb buttons already teach
   // it. Desktop legend sits bottom-centre (clear of the action); mobile sits top-centre
   // (clear of the thumb buttons).
-  const showLegend = alwaysShowLegend || isMutatedMapping(mapping);
+  const mutated = isMutatedMapping(mapping);
+  const showLegend = alwaysShowLegend || mutated;
   if (showLegend) {
-    ctx.font = '16px system-ui, sans-serif';
     ctx.textAlign = 'center';
     const ly = alwaysShowLegend ? h - 44 : 84;
+    // On a mutated band, shout it: a label + bright rings on the colours that MOVED.
+    if (mutated) {
+      ctx.font = 'bold 14px system-ui, sans-serif';
+      ctx.fillStyle = '#ff9d5c';
+      ctx.fillText('⚠ CODE SCRAMBLED', w / 2, ly - 26);
+    }
+    ctx.font = '16px system-ui, sans-serif';
     CUE_COLORS.forEach((c, i) => {
       const lx = w / 2 - 96 + i * 64;
+      const changed = mutated && mapping[c] !== DEFAULT_MAPPING[c];
       ctx.fillStyle = CUE_HEX[c];
       ctx.beginPath();
       ctx.arc(lx, ly, 14, 0, Math.PI * 2);
       ctx.fill();
       ctx.fillStyle = '#0b1020';
       ctx.fillText(mapping[c], lx, ly + 5);
+      if (changed) {
+        // Highlight a moved colour so the player sees exactly which ones to relearn.
+        ctx.strokeStyle = '#ff9d5c';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(lx, ly, 18, 0, Math.PI * 2);
+        ctx.stroke();
+      }
     });
   }
 

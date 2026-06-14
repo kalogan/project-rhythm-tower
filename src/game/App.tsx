@@ -165,6 +165,11 @@ export function App(): JSX.Element {
               Floor {floorIndex + 1}: {floor.name}
             </h2>
             <div style={{ opacity: 0.6 }}>Get ready…</div>
+            {floor.mapping && (
+              <div style={{ marginTop: 12, color: '#ff9d5c', fontWeight: 700 }}>
+                ⚠ Button code scrambled — watch the legend!
+              </div>
+            )}
           </div>
         </Overlay>
       )}
