@@ -1,9 +1,16 @@
 import { Canvas, useFrame } from '@react-three/fiber';
 import { useMemo } from 'react';
-import type { PerspectiveCamera } from 'three';
+import type { Object3D, PerspectiveCamera } from 'three';
 import type { BandPack } from '../content/schemas.js';
 import { resolveArtKit, lookColors } from './resolveArtKit.js';
 import { buildTowerScene } from './towerScene.js';
+import { BossActor, type BossPhaseLite } from './BossActor.js';
+
+/** Optional boss looming in the backdrop (the region's landmark awakened). */
+export interface BossPresence {
+  readonly object: Object3D;
+  readonly getPhase: () => BossPhaseLite | undefined;
+}
 
 /**
  * The 2.5D backdrop: a low-poly TOWER that scrolls downward (the player reads as
@@ -47,7 +54,15 @@ function TowerRig({ band, floorIndex }: { band: BandPack; floorIndex: number }):
   );
 }
 
-export function TowerRenderer({ band, floorIndex }: { band: BandPack; floorIndex: number }): JSX.Element {
+export function TowerRenderer({
+  band,
+  floorIndex,
+  boss,
+}: {
+  band: BandPack;
+  floorIndex: number;
+  boss?: BossPresence | undefined;
+}): JSX.Element {
   const colors = lookColors(band.look);
   return (
     <Canvas
@@ -60,6 +75,7 @@ export function TowerRenderer({ band, floorIndex }: { band: BandPack; floorIndex
       <ambientLight intensity={0.85} />
       <directionalLight position={[6, 18, 8]} intensity={2.2} />
       <TowerRig band={band} floorIndex={floorIndex} />
+      {boss && <BossActor object={boss.object} getPhase={boss.getPhase} />}
     </Canvas>
   );
 }

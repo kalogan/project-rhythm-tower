@@ -4,13 +4,17 @@ import {
   generateBossChart,
   generateChart,
   makeBeatGrid,
+  phaseAtBeat,
+  timeToBeat,
+  type BossChart,
   type BossSpec,
   type Chart,
   type FloorScore,
 } from '../../core/index.js';
 import { BANDS } from '../../content/packs.js';
 import { toChartSpec } from '../../content/schemas.js';
-import { TowerRenderer } from '../../game/TowerRenderer.js';
+import { resolveArtKit } from '../../game/resolveArtKit.js';
+import { TowerRenderer, type BossPresence } from '../../game/TowerRenderer.js';
 import { FloorPlayer } from '../../game/FloorPlayer.js';
 import { createAudioDriver, type AudioDriver } from '../../game/audio/audioDriver.js';
 import { Btn, MONO } from '../ui.js';
@@ -60,28 +64,53 @@ export function PlayPanel(): JSX.Element {
   const band = BANDS[stop.bandIdx]!;
   const floor = band.floors[stop.floorIdx]!;
 
-  const { chart, grid, mapping } = useMemo<{
+  const { chart, grid, mapping, bossFull } = useMemo<{
     chart: Chart;
     grid: ReturnType<typeof makeBeatGrid>;
     mapping: typeof DEFAULT_MAPPING;
+    bossFull: BossChart | null;
   }>(() => {
     if (stop.boss) {
       const spec = bossSpec(floor.chart.bpm);
       const bc = generateBossChart(spec, 4242 + stop.bandIdx);
-      return { chart: { cues: bc.cues }, grid: makeBeatGrid(spec.bpm, spec.beatsPerBar), mapping: DEFAULT_MAPPING };
+      return { chart: { cues: bc.cues }, grid: makeBeatGrid(spec.bpm, spec.beatsPerBar), mapping: DEFAULT_MAPPING, bossFull: bc };
     }
     return {
       chart: generateChart(toChartSpec(floor), floor.seed),
       grid: makeBeatGrid(floor.chart.bpm, floor.chart.beatsPerBar),
       mapping: floor.mapping ?? DEFAULT_MAPPING,
+      bossFull: null,
     };
   }, [stop, floor]);
+
+  // The 3D boss creature (the region's landmark awakened) + a phase read synced to the
+  // gameplay clock, so the actor looms/lunges in time with the barrage/weak-spot windows.
+  const bossObject = useMemo(
+    () => (stop.boss ? (resolveArtKit(band.artKitId).boss ?? resolveArtKit(band.artKitId).landmark)(7001) : null),
+    [stop.boss, band.artKitId],
+  );
+  const bossT0Ref = useRef(0);
+  const LEAD_SEC = 2.0; // matches FloorPlayer's lead-in so the actor and cues align
+  const bossPresence: BossPresence | undefined =
+    stop.boss && bossObject
+      ? {
+          object: bossObject,
+          getPhase: () => {
+            if (!bossFull || !audioRef.current) return undefined;
+            const ft = audioRef.current.now() - bossT0Ref.current;
+            const ph = phaseAtBeat(bossFull, timeToBeat(grid, ft));
+            if (!ph) return undefined;
+            return ph.color !== undefined ? { kind: ph.kind, color: ph.color } : { kind: ph.kind };
+          },
+        }
+      : undefined;
 
   useEffect(() => () => audioRef.current?.stopAll(), []);
 
   const start = useCallback(async () => {
     if (!audioRef.current) audioRef.current = createAudioDriver();
     await audioRef.current.resume();
+    bossT0Ref.current = audioRef.current.now() + LEAD_SEC;
     setScore(null);
     setRunKey((k) => k + 1);
     setPlaying(true);
@@ -101,7 +130,7 @@ export function PlayPanel(): JSX.Element {
 
   return (
     <div style={{ position: 'absolute', inset: 0 }}>
-      <TowerRenderer band={band} floorIndex={stop.floorIdx} />
+      <TowerRenderer band={band} floorIndex={stop.floorIdx} boss={bossPresence} />
 
       {playing && audioRef.current && (
         <FloorPlayer
