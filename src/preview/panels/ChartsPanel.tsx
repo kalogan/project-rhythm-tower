@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   beatToTime,
   generateChart,
@@ -13,6 +13,7 @@ import {
 import { toChartSpec, type Floor } from '../../content/schemas.js';
 import type { ChartSpec } from '../../core/chart.js';
 import { BANDS } from '../../content/packs.js';
+import { createAudioDriver, type AudioDriver } from '../../game/audio/audioDriver.js';
 import { Btn, MONO, PANEL, Section, Slider } from '../ui.js';
 
 // Mirror the in-game cue colours (FloorPlayer's CUE_HEX) so the timeline reads the
@@ -122,11 +123,25 @@ export function ChartsPanel(): JSX.Element {
   const playTimeRef = useRef(0);
   const [playTime, setPlayTime] = useState(0);
 
-  // Reset the playhead to the start whenever the chart itself changes.
+  // Audio: the real procedural bed + cue tones. The visual playhead is driven by the
+  // AUDIO clock (audio.now() - t0) while playing, so sound + timeline stay sample-locked
+  // — exactly how the game keeps judgment and visuals in sync.
+  const audioRef = useRef<AudioDriver | null>(null);
+  const t0Ref = useRef(0);
+  const audioActiveRef = useRef(false);
+
+  // Reset the playhead AND silence audio whenever the chart changes (retuning a knob,
+  // switching floor) — press Play again to hear the new chart.
   useEffect(() => {
+    audioRef.current?.stopAll();
+    audioActiveRef.current = false;
+    setPlaying(false);
     playTimeRef.current = 0;
     setPlayTime(0);
   }, [chart]);
+
+  // Silence audio on unmount (leaving the panel / tab).
+  useEffect(() => () => audioRef.current?.stopAll(), []);
 
   // ── The rAF draw loop. Re-created when the data it draws changes, but the clock
   // lives in refs so play/scrub state survives. dt clamped; rAF cleaned up. ──
@@ -134,6 +149,45 @@ export function ChartsPanel(): JSX.Element {
   playingRef.current = playing;
   const endTimeRef = useRef(endTime);
   endTimeRef.current = endTime;
+
+  const pause = useCallback(() => {
+    audioRef.current?.stopAll();
+    audioActiveRef.current = false;
+    setPlaying(false);
+  }, []);
+
+  const play = useCallback(async () => {
+    let audio = audioRef.current;
+    if (!audio) {
+      audio = createAudioDriver();
+      audioRef.current = audio;
+    }
+    await audio.resume(); // the Play click is the user gesture Web Audio needs
+    audio.stopAll();
+    // Schedule the whole chart so audio.now() - t0 == the current playhead.
+    const t0 = audio.now() - playTimeRef.current;
+    audio.scheduleFloor(grid, chart, t0);
+    t0Ref.current = t0;
+    audioActiveRef.current = true;
+    setPlaying(true);
+  }, [grid, chart]);
+
+  const stop = useCallback(() => {
+    audioRef.current?.stopAll();
+    audioActiveRef.current = false;
+    setPlaying(false);
+    playTimeRef.current = 0;
+    setPlayTime(0);
+  }, []);
+
+  // Scrubbing seeks the playhead and pauses (press Play to hear from the new spot).
+  const seek = useCallback((t: number) => {
+    audioRef.current?.stopAll();
+    audioActiveRef.current = false;
+    setPlaying(false);
+    playTimeRef.current = t;
+    setPlayTime(t);
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -149,17 +203,20 @@ export function ChartsPanel(): JSX.Element {
     window.addEventListener('resize', resize);
 
     let raf = 0;
-    let last = performance.now() / 1000;
     const loop = (): void => {
-      const nowSec = performance.now() / 1000;
-      const dt = Math.min(0.05, Math.max(0, nowSec - last));
-      last = nowSec;
-
-      if (playingRef.current) {
-        let t = playTimeRef.current + dt;
-        if (t >= endTimeRef.current) t = 0; // loop
-        playTimeRef.current = t;
-        setPlayTime(t);
+      if (playingRef.current && audioActiveRef.current && audioRef.current) {
+        const audio = audioRef.current;
+        let t = audio.now() - t0Ref.current;
+        if (t >= endTimeRef.current) {
+          // Loop: reschedule the bed from the top so the music keeps playing.
+          audio.stopAll();
+          const nt0 = audio.now() + 0.08;
+          audio.scheduleFloor(grid, chart, nt0);
+          t0Ref.current = nt0;
+          t = 0;
+        }
+        playTimeRef.current = Math.max(0, t);
+        setPlayTime(playTimeRef.current);
       }
 
       drawTimeline(ctx, canvas, chart, grid, spec, playTimeRef.current);
@@ -293,16 +350,9 @@ export function ChartsPanel(): JSX.Element {
 
         <Section title="Transport">
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <Btn onClick={() => setPlaying((p) => !p)}>{playing ? '❚❚ Pause' : '▶ Play'}</Btn>
-            <Btn
-              onClick={() => {
-                setPlaying(false);
-                playTimeRef.current = 0;
-                setPlayTime(0);
-              }}
-            >
-              ■ Stop
-            </Btn>
+            <Btn onClick={() => (playing ? pause() : void play())}>{playing ? '❚❚ Pause' : '▶ Play'}</Btn>
+            <Btn onClick={stop}>■ Stop</Btn>
+            <span style={{ ...MONO, fontSize: 11, opacity: 0.55 }}>♪ with music</span>
           </div>
           <input
             type="range"
@@ -310,11 +360,7 @@ export function ChartsPanel(): JSX.Element {
             max={Math.max(endTime, 0.001)}
             step={0.01}
             value={Math.min(playTime, endTime)}
-            onChange={(e) => {
-              const t = Number(e.target.value);
-              playTimeRef.current = t;
-              setPlayTime(t);
-            }}
+            onChange={(e) => seek(Number(e.target.value))}
             style={{ width: '100%', marginTop: 8 }}
           />
           <div style={{ ...MONO, fontSize: 11, opacity: 0.75, display: 'flex', justifyContent: 'space-between' }}>
